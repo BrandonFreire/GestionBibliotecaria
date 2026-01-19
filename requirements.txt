@@ -1,0 +1,11 @@
+# Conexión a SQL Server
+pyodbc>=4.0.39
+
+# Manejo de variables de entorno
+python-dotenv>=1.0.0
+
+# Validación de datos (opcional)
+# pydantic>=2.0.0
+
+# GUI con PyQt5
+PyQt5>=5.15.0
