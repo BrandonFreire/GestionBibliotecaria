@@ -90,9 +90,9 @@ class UsuariosView(QWidget):
         
         # Tabla de usuarios
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels([
-            "ID", "Nombre", "Email", "Tipo", "Estado", "Préstamos Activos"
+            "Cédula", "Nombre", "Apellido", "Email", "Celular"
         ])
         
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -105,9 +105,8 @@ class UsuariosView(QWidget):
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         header.setSectionResizeMode(2, QHeaderView.Stretch)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         
         self.table.setStyleSheet("""
             QTableWidget {
@@ -150,21 +149,19 @@ class UsuariosView(QWidget):
         self.total_label = QLabel("Total: 0 usuarios")
         stats_layout.addWidget(self.total_label)
         stats_layout.addStretch()
-        self.active_label = QLabel("Activos: 0")
-        self.active_label.setStyleSheet(f"color: {Settings.SUCCESS_COLOR};")
-        stats_layout.addWidget(self.active_label)
         
         layout.addWidget(stats_frame)
     
     def _load_sample_data(self):
         """Carga datos de ejemplo."""
+        # Campos: Cedula, Nombre, Apellido, Email, Celular
         sample_users = [
-            (1, "Juan Pérez", "juan.perez@email.com", "Estudiante", "Activo", 2),
-            (2, "María García", "maria.garcia@email.com", "Profesor", "Activo", 1),
-            (3, "Carlos López", "carlos.lopez@email.com", "Estudiante", "Activo", 0),
-            (4, "Ana Martínez", "ana.martinez@email.com", "Estudiante", "Suspendido", 3),
-            (5, "Pedro Sánchez", "pedro.sanchez@email.com", "Profesor", "Activo", 0),
-            (6, "Laura Torres", "laura.torres@email.com", "Estudiante", "Activo", 1),
+            ("1102345678", "Juan", "Pérez", "juan.perez@email.com", "0991234567"),
+            ("1103456789", "María", "García", "maria.garcia@email.com", "0982345678"),
+            ("1104567890", "Carlos", "López", "carlos.lopez@email.com", "0973456789"),
+            ("1105678901", "Ana", "Martínez", "ana.martinez@email.com", "0964567890"),
+            ("1106789012", "Pedro", "Sánchez", "pedro.sanchez@email.com", "0955678901"),
+            ("1107890123", "Laura", "Torres", "laura.torres@email.com", "0946789012"),
         ]
         
         self._populate_table(sample_users)
@@ -176,15 +173,7 @@ class UsuariosView(QWidget):
         for row, user in enumerate(users):
             for col, value in enumerate(user):
                 item = QTableWidgetItem(str(value))
-                item.setTextAlignment(Qt.AlignCenter if col in [0, 5] else Qt.AlignLeft | Qt.AlignVCenter)
-                
-                # Colorear estado
-                if col == 4:
-                    if value == "Activo":
-                        item.setForeground(Qt.darkGreen)
-                    else:
-                        item.setForeground(Qt.red)
-                
+                item.setTextAlignment(Qt.AlignCenter if col in [0, 4] else Qt.AlignLeft | Qt.AlignVCenter)
                 self.table.setItem(row, col, item)
         
         self._update_stats()
@@ -192,14 +181,7 @@ class UsuariosView(QWidget):
     def _update_stats(self):
         """Actualiza las estadísticas."""
         total = self.table.rowCount()
-        active = 0
-        for row in range(total):
-            item = self.table.item(row, 4)
-            if item and item.text() == "Activo":
-                active += 1
-        
         self.total_label.setText(f"Total: {total} usuarios")
-        self.active_label.setText(f"Activos: {active}")
     
     def _filter_users(self):
         """Filtra los usuarios según la búsqueda."""
@@ -210,7 +192,7 @@ class UsuariosView(QWidget):
             
             if search_text:
                 match = False
-                for col in [1, 2]:  # Nombre, Email
+                for col in [0, 1, 2, 3]:  # Cédula, Nombre, Apellido, Email
                     item = self.table.item(row, col)
                     if item and search_text in item.text().lower():
                         match = True
@@ -231,12 +213,11 @@ class UsuariosView(QWidget):
         """Muestra los detalles del usuario."""
         row = index.row()
         user_info = f"""
-        <b>ID:</b> {self.table.item(row, 0).text()}<br>
+        <b>Cédula:</b> {self.table.item(row, 0).text()}<br>
         <b>Nombre:</b> {self.table.item(row, 1).text()}<br>
-        <b>Email:</b> {self.table.item(row, 2).text()}<br>
-        <b>Tipo:</b> {self.table.item(row, 3).text()}<br>
-        <b>Estado:</b> {self.table.item(row, 4).text()}<br>
-        <b>Préstamos Activos:</b> {self.table.item(row, 5).text()}
+        <b>Apellido:</b> {self.table.item(row, 2).text()}<br>
+        <b>Email:</b> {self.table.item(row, 3).text()}<br>
+        <b>Celular:</b> {self.table.item(row, 4).text()}
         """
         
         QMessageBox.information(self, "Detalles del Usuario", user_info)
