@@ -11,7 +11,7 @@ from PyQt5.QtCore import Qt
 from config.settings import Settings
 
 
-class UsersView(QWidget):
+class UsuariosView(QWidget):
     """Vista de usuarios registrados."""
     
     def __init__(self, db_connection=None):

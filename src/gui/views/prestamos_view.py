@@ -11,7 +11,7 @@ from PyQt5.QtCore import Qt
 from config.settings import Settings
 
 
-class LoansView(QWidget):
+class PrestamosView(QWidget):
     """Vista de historial de préstamos."""
     
     def __init__(self, db_connection=None):

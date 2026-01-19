@@ -13,8 +13,8 @@ from config.settings import Settings
 from database.connection import DatabaseConnection
 from gui.views.login_view import LoginView
 from gui.views.libros_view import LibrosView
-from gui.views.users_view import UsersView
-from gui.views.loans_view import LoansView
+from gui.views.usuarios_view import UsuariosView
+from gui.views.prestamos_view import PrestamosView
 from gui.views.ejemplares_view import EjemplaresView
 
 
@@ -153,13 +153,13 @@ class MainWindow(QMainWindow):
         
         # Crear vistas
         self.libros_view = LibrosView(self.db_connection)
-        self.users_view = UsersView(self.db_connection)
-        self.loans_view = LoansView(self.db_connection)
+        self.usuarios_view = UsuariosView(self.db_connection)
+        self.prestamos_view = PrestamosView(self.db_connection)
         self.ejemplares_view = EjemplaresView(self.db_connection)
         
         self.content_stack.addWidget(self.libros_view)
-        self.content_stack.addWidget(self.users_view)
-        self.content_stack.addWidget(self.loans_view)
+        self.content_stack.addWidget(self.usuarios_view)
+        self.content_stack.addWidget(self.prestamos_view)
         self.content_stack.addWidget(self.ejemplares_view)
         
         main_layout.addWidget(self.content_stack, 1)
@@ -332,13 +332,13 @@ class MainWindow(QMainWindow):
     
     def _show_users(self):
         """Muestra la vista de usuarios."""
-        self.content_stack.setCurrentWidget(self.users_view)
+        self.content_stack.setCurrentWidget(self.usuarios_view)
         self._update_nav_buttons(1)
         self._update_status("Usuarios Registrados")
     
     def _show_loans(self):
         """Muestra la vista de préstamos."""
-        self.content_stack.setCurrentWidget(self.loans_view)
+        self.content_stack.setCurrentWidget(self.prestamos_view)
         self._update_nav_buttons(2)
         self._update_status("Historial de Préstamos")
     
