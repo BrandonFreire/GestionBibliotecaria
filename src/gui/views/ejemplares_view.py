@@ -11,7 +11,7 @@ from PyQt5.QtCore import Qt
 from config.settings import Settings
 
 
-class CopiesView(QWidget):
+class EjemplaresView(QWidget):
     """Vista de ejemplares de libros."""
     
     def __init__(self, db_connection=None):

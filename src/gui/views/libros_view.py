@@ -12,7 +12,7 @@ from PyQt5.QtGui import QIcon
 from config.settings import Settings
 
 
-class BooksView(QWidget):
+class LibrosView(QWidget):
     """Vista del catálogo de libros."""
     
     # Señal para solicitar préstamo

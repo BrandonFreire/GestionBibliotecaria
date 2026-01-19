@@ -12,10 +12,10 @@ from PyQt5.QtGui import QFont, QIcon
 from config.settings import Settings
 from database.connection import DatabaseConnection
 from gui.views.login_view import LoginView
-from gui.views.books_view import BooksView
+from gui.views.libros_view import LibrosView
 from gui.views.users_view import UsersView
 from gui.views.loans_view import LoansView
-from gui.views.copies_view import CopiesView
+from gui.views.ejemplares_view import EjemplaresView
 
 
 class MainWindow(QMainWindow):
@@ -152,15 +152,15 @@ class MainWindow(QMainWindow):
         self.content_stack.setStyleSheet(f"background-color: {Settings.BACKGROUND_COLOR};")
         
         # Crear vistas
-        self.books_view = BooksView(self.db_connection)
+        self.libros_view = LibrosView(self.db_connection)
         self.users_view = UsersView(self.db_connection)
         self.loans_view = LoansView(self.db_connection)
-        self.copies_view = CopiesView(self.db_connection)
+        self.ejemplares_view = EjemplaresView(self.db_connection)
         
-        self.content_stack.addWidget(self.books_view)
+        self.content_stack.addWidget(self.libros_view)
         self.content_stack.addWidget(self.users_view)
         self.content_stack.addWidget(self.loans_view)
-        self.content_stack.addWidget(self.copies_view)
+        self.content_stack.addWidget(self.ejemplares_view)
         
         main_layout.addWidget(self.content_stack, 1)
         
@@ -326,7 +326,7 @@ class MainWindow(QMainWindow):
     
     def _show_books(self):
         """Muestra la vista de libros."""
-        self.content_stack.setCurrentWidget(self.books_view)
+        self.content_stack.setCurrentWidget(self.libros_view)
         self._update_nav_buttons(0)
         self._update_status("Catálogo de Libros")
     
@@ -344,7 +344,7 @@ class MainWindow(QMainWindow):
     
     def _show_copies(self):
         """Muestra la vista de ejemplares."""
-        self.content_stack.setCurrentWidget(self.copies_view)
+        self.content_stack.setCurrentWidget(self.ejemplares_view)
         self._update_nav_buttons(3)
         self._update_status("Ejemplares de Libros")
     
