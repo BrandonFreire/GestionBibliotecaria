@@ -99,7 +99,7 @@ class BooksView(QWidget):
         # Filtro por categoría
         search_layout.addWidget(QLabel("Categoría:"))
         self.category_filter = QComboBox()
-        self.category_filter.addItems(["Todas", "Ficción", "No Ficción", "Ciencia", "Historia", "Arte"])
+        self.category_filter.addItems(["Todas", "Computación", "Software", "Química"])
         self.category_filter.setStyleSheet("""
             QComboBox {
                 padding: 8px;
@@ -115,9 +115,9 @@ class BooksView(QWidget):
         
         # Tabla de libros
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels([
-            "ID", "Título", "Autor", "ISBN", "Categoría", "Disponibles"
+            "ISBN", "Nombre", "Año de edición", "Categoría", "Lugar de impresión"
         ])
         
         # Configurar tabla
@@ -131,10 +131,9 @@ class BooksView(QWidget):
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
-        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.Stretch)
         
         self.table.setStyleSheet("""
             QTableWidget {
@@ -186,15 +185,27 @@ class BooksView(QWidget):
     
     def _load_sample_data(self):
         """Carga datos de ejemplo."""
+        # Estructura: (ISBN, Nombre, Año de edición, Categoría, Lugar de impresión)
         sample_books = [
-            (1, "Cien años de soledad", "Gabriel García Márquez", "978-0307474728", "Ficción", 3),
-            (2, "El principito", "Antoine de Saint-Exupéry", "978-0156012195", "Ficción", 5),
-            (3, "1984", "George Orwell", "978-0451524935", "Ficción", 2),
-            (4, "Breve historia del tiempo", "Stephen Hawking", "978-0553380163", "Ciencia", 1),
-            (5, "El arte de la guerra", "Sun Tzu", "978-1599869773", "Historia", 4),
-            (6, "Sapiens", "Yuval Noah Harari", "978-0062316097", "Historia", 0),
-            (7, "El código Da Vinci", "Dan Brown", "978-0307474278", "Ficción", 2),
-            (8, "Cosmos", "Carl Sagan", "978-0345539434", "Ciencia", 3),
+            # Ciencias de la Computación
+            ("978-0262033848", "Introduction to Algorithms", 2009, "Computación", "Cambridge, USA"),
+            ("978-0201633610", "Design Patterns", 1994, "Software", "Boston, USA"),
+            ("978-0132350884", "Clean Code", 2008, "Software", "New Jersey, USA"),
+            ("978-0596007126", "Head First Design Patterns", 2004, "Software", "Sebastopol, USA"),
+            ("978-0201485677", "The Pragmatic Programmer", 1999, "Software", "Boston, USA"),
+            ("978-0596517748", "JavaScript: The Good Parts", 2008, "Software", "Sebastopol, USA"),
+            ("978-1491950357", "Python Crash Course", 2015, "Computación", "San Francisco, USA"),
+            ("978-0134685991", "Effective Java", 2017, "Software", "Boston, USA"),
+            # Química
+            ("978-6071509284", "Química General", 2014, "Química", "Ciudad de México, México"),
+            ("978-0321910417", "Química Orgánica", 2017, "Química", "New York, USA"),
+            ("978-8429175233", "Química Inorgánica", 2010, "Química", "Barcelona, España"),
+            ("978-9702615149", "Fundamentos de Química", 2013, "Química", "Ciudad de México, México"),
+            ("978-0073511092", "Química: La Ciencia Central", 2018, "Química", "New York, USA"),
+            # Más Computación
+            ("978-0596009205", "Learning Python", 2007, "Computación", "Sebastopol, USA"),
+            ("978-1449355739", "Learning SQL", 2020, "Computación", "Sebastopol, USA"),
+            ("978-0134757599", "Refactoring", 2018, "Software", "Boston, USA"),
         ]
         
         self._populate_table(sample_books)
@@ -206,16 +217,7 @@ class BooksView(QWidget):
         for row, book in enumerate(books):
             for col, value in enumerate(book):
                 item = QTableWidgetItem(str(value))
-                item.setTextAlignment(Qt.AlignCenter if col in [0, 5] else Qt.AlignLeft | Qt.AlignVCenter)
-                
-                # Colorear disponibilidad
-                if col == 5:
-                    if value == 0:
-                        item.setForeground(Qt.red)
-                        item.setText("No disponible")
-                    else:
-                        item.setForeground(Qt.darkGreen)
-                
+                item.setTextAlignment(Qt.AlignCenter if col in [0, 2] else Qt.AlignLeft | Qt.AlignVCenter)
                 self.table.setItem(row, col, item)
         
         self._update_stats()
@@ -223,17 +225,8 @@ class BooksView(QWidget):
     def _update_stats(self):
         """Actualiza las estadísticas."""
         total = self.table.rowCount()
-        available = 0
-        for row in range(total):
-            item = self.table.item(row, 5)
-            if item and item.text() != "No disponible":
-                try:
-                    available += int(item.text())
-                except ValueError:
-                    pass
-        
         self.total_label.setText(f"Total: {total} libros")
-        self.available_label.setText(f"Disponibles: {available} ejemplares")
+        self.available_label.setText("")
     
     def _filter_books(self):
         """Filtra los libros según la búsqueda."""
@@ -264,14 +257,7 @@ class BooksView(QWidget):
     def _on_selection_changed(self):
         """Maneja el cambio de selección."""
         selected = self.table.selectedItems()
-        if selected:
-            row = selected[0].row()
-            available_item = self.table.item(row, 5)
-            self.loan_btn.setEnabled(
-                available_item and available_item.text() != "No disponible"
-            )
-        else:
-            self.loan_btn.setEnabled(False)
+        self.loan_btn.setEnabled(len(selected) > 0)
     
     def _request_loan(self):
         """Solicita un préstamo del libro seleccionado."""
@@ -279,9 +265,10 @@ class BooksView(QWidget):
         if selected:
             row = selected[0].row()
             book_data = {
-                'id': self.table.item(row, 0).text(),
+                'isbn': self.table.item(row, 0).text(),
                 'title': self.table.item(row, 1).text(),
-                'author': self.table.item(row, 2).text(),
+                'year': self.table.item(row, 2).text(),
+                'category': self.table.item(row, 3).text(),
             }
             
             reply = QMessageBox.question(
@@ -303,11 +290,11 @@ class BooksView(QWidget):
         """Muestra los detalles del libro."""
         row = index.row()
         book_info = f"""
-        <b>Título:</b> {self.table.item(row, 1).text()}<br>
-        <b>Autor:</b> {self.table.item(row, 2).text()}<br>
-        <b>ISBN:</b> {self.table.item(row, 3).text()}<br>
-        <b>Categoría:</b> {self.table.item(row, 4).text()}<br>
-        <b>Disponibles:</b> {self.table.item(row, 5).text()}
+        <b>ISBN:</b> {self.table.item(row, 0).text()}<br>
+        <b>Nombre:</b> {self.table.item(row, 1).text()}<br>
+        <b>Año de edición:</b> {self.table.item(row, 2).text()}<br>
+        <b>Categoría:</b> {self.table.item(row, 3).text()}<br>
+        <b>Lugar de impresión:</b> {self.table.item(row, 4).text()}
         """
         
         QMessageBox.information(self, "Detalles del Libro", book_info)
