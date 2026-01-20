@@ -30,10 +30,11 @@ class UsuariosView(QWidget):
         header_layout = QHBoxLayout()
         
         title = QLabel("👥 Usuarios Registrados")
+        theme = Settings.get_theme()
         title.setStyleSheet(f"""
             font-size: {Settings.FONT_SIZE_TITLE}pt;
             font-weight: bold;
-            color: {Settings.TEXT_COLOR};
+            color: {theme['TEXT_COLOR']};
         """)
         header_layout.addWidget(title)
         header_layout.addStretch()
@@ -61,12 +62,12 @@ class UsuariosView(QWidget):
         
         # Barra de búsqueda
         search_frame = QFrame()
-        search_frame.setStyleSheet("""
-            QFrame {
-                background-color: white;
+        search_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['CARD_BG']};
                 border-radius: 8px;
                 padding: 10px;
-            }
+            }}
         """)
         search_layout = QHBoxLayout(search_frame)
         search_layout.setContentsMargins(10, 5, 10, 5)
@@ -76,12 +77,14 @@ class UsuariosView(QWidget):
         
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Buscar usuario por nombre o email...")
-        self.search_input.setStyleSheet("""
-            QLineEdit {
+        self.search_input.setStyleSheet(f"""
+            QLineEdit {{
                 border: none;
                 padding: 8px;
                 font-size: 11pt;
-            }
+                background-color: {theme['CARD_BG']};
+                color: {theme['TEXT_COLOR']};
+            }}
         """)
         self.search_input.textChanged.connect(self._filter_users)
         search_layout.addWidget(self.search_input, 1)
@@ -108,27 +111,29 @@ class UsuariosView(QWidget):
         header.setSectionResizeMode(3, QHeaderView.Stretch)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         
-        self.table.setStyleSheet("""
-            QTableWidget {
-                background-color: white;
-                border: 1px solid #E0E0E0;
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: {theme['CARD_BG']};
+                border: 1px solid {theme['BORDER_COLOR']};
                 border-radius: 8px;
-                gridline-color: #E0E0E0;
-            }
-            QTableWidget::item {
+                gridline-color: {theme['BORDER_COLOR']};
+                color: {theme['TEXT_COLOR']};
+            }}
+            QTableWidget::item {{
                 padding: 8px;
-            }
-            QTableWidget::item:selected {
-                background-color: #2196F3;
+            }}
+            QTableWidget::item:selected {{
+                background-color: {Settings.PRIMARY_COLOR};
                 color: white;
-            }
-            QHeaderView::section {
-                background-color: #F5F5F5;
+            }}
+            QHeaderView::section {{
+                background-color: {theme['USER_FRAME_BG']};
+                color: {theme['TEXT_COLOR']};
                 padding: 10px;
                 border: none;
-                border-bottom: 2px solid #E0E0E0;
+                border-bottom: 2px solid {theme['BORDER_COLOR']};
                 font-weight: bold;
-            }
+            }}
         """)
         
         self.table.doubleClicked.connect(self._show_user_details)
@@ -137,16 +142,17 @@ class UsuariosView(QWidget):
         
         # Estadísticas
         stats_frame = QFrame()
-        stats_frame.setStyleSheet("""
-            QFrame {
-                background-color: white;
+        stats_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['CARD_BG']};
                 border-radius: 4px;
                 padding: 5px;
-            }
+            }}
         """)
         stats_layout = QHBoxLayout(stats_frame)
         
         self.total_label = QLabel("Total: 0 usuarios")
+        self.total_label.setStyleSheet(f"color: {theme['TEXT_COLOR']};")
         stats_layout.addWidget(self.total_label)
         stats_layout.addStretch()
         

@@ -30,10 +30,11 @@ class EjemplaresView(QWidget):
         header_layout = QHBoxLayout()
         
         title = QLabel("📦 Ejemplares de Libros")
+        theme = Settings.get_theme()
         title.setStyleSheet(f"""
             font-size: {Settings.FONT_SIZE_TITLE}pt;
             font-weight: bold;
-            color: {Settings.TEXT_COLOR};
+            color: {theme['TEXT_COLOR']};
         """)
         header_layout.addWidget(title)
         header_layout.addStretch()
@@ -61,12 +62,12 @@ class EjemplaresView(QWidget):
         
         # Filtros
         filter_frame = QFrame()
-        filter_frame.setStyleSheet("""
-            QFrame {
-                background-color: white;
+        filter_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['CARD_BG']};
                 border-radius: 8px;
                 padding: 10px;
-            }
+            }}
         """)
         filter_layout = QHBoxLayout(filter_frame)
         filter_layout.setContentsMargins(10, 5, 10, 5)
@@ -76,28 +77,34 @@ class EjemplaresView(QWidget):
         filter_layout.addWidget(search_icon)
         
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Buscar por título o código...")
-        self.search_input.setStyleSheet("""
-            QLineEdit {
+        self.search_input.setPlaceholderText("Buscar por ISBN o número de ejemplar...")
+        self.search_input.setStyleSheet(f"""
+            QLineEdit {{
                 border: none;
                 padding: 8px;
                 font-size: 11pt;
-            }
+                background-color: {theme['CARD_BG']};
+                color: {theme['TEXT_COLOR']};
+            }}
         """)
         self.search_input.textChanged.connect(self._filter_copies)
         filter_layout.addWidget(self.search_input, 1)
         
         # Filtro por estado
-        filter_layout.addWidget(QLabel("Estado:"))
+        status_label = QLabel("Estado:")
+        status_label.setStyleSheet(f"color: {theme['TEXT_COLOR']};")
+        filter_layout.addWidget(status_label)
         self.status_filter = QComboBox()
         self.status_filter.addItems(["Todos", "Disponible", "Prestado", "En reparación", "Dado de baja"])
-        self.status_filter.setStyleSheet("""
-            QComboBox {
+        self.status_filter.setStyleSheet(f"""
+            QComboBox {{
                 padding: 8px;
-                border: 1px solid #E0E0E0;
+                border: 1px solid {theme['BORDER_COLOR']};
                 border-radius: 4px;
                 min-width: 130px;
-            }
+                background-color: {theme['CARD_BG']};
+                color: {theme['TEXT_COLOR']};
+            }}
         """)
         self.status_filter.currentTextChanged.connect(self._filter_copies)
         filter_layout.addWidget(self.status_filter)
@@ -106,9 +113,9 @@ class EjemplaresView(QWidget):
         
         # Tabla de ejemplares
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels([
-            "ID", "Código", "Libro", "Estado", "Ubicación", "Condición"
+            "ISBN", "Número Ejemplar", "Estado Ejemplar", "Número Estante", "Número Pasillo"
         ])
         
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -120,48 +127,50 @@ class EjemplaresView(QWidget):
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         
-        self.table.setStyleSheet("""
-            QTableWidget {
-                background-color: white;
-                border: 1px solid #E0E0E0;
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: {theme['CARD_BG']};
+                border: 1px solid {theme['BORDER_COLOR']};
                 border-radius: 8px;
-                gridline-color: #E0E0E0;
-            }
-            QTableWidget::item {
+                gridline-color: {theme['BORDER_COLOR']};
+                color: {theme['TEXT_COLOR']};
+            }}
+            QTableWidget::item {{
                 padding: 8px;
-            }
-            QTableWidget::item:selected {
-                background-color: #2196F3;
+            }}
+            QTableWidget::item:selected {{
+                background-color: {Settings.PRIMARY_COLOR};
                 color: white;
-            }
-            QHeaderView::section {
-                background-color: #F5F5F5;
+            }}
+            QHeaderView::section {{
+                background-color: {theme['USER_FRAME_BG']};
+                color: {theme['TEXT_COLOR']};
                 padding: 10px;
                 border: none;
-                border-bottom: 2px solid #E0E0E0;
+                border-bottom: 2px solid {theme['BORDER_COLOR']};
                 font-weight: bold;
-            }
+            }}
         """)
         
         layout.addWidget(self.table, 1)
         
         # Estadísticas
         stats_frame = QFrame()
-        stats_frame.setStyleSheet("""
-            QFrame {
-                background-color: white;
+        stats_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['CARD_BG']};
                 border-radius: 4px;
                 padding: 5px;
-            }
+            }}
         """)
         stats_layout = QHBoxLayout(stats_frame)
         
         self.total_label = QLabel("Total: 0 ejemplares")
+        self.total_label.setStyleSheet(f"color: {theme['TEXT_COLOR']};")
         stats_layout.addWidget(self.total_label)
         stats_layout.addStretch()
         
@@ -177,17 +186,18 @@ class EjemplaresView(QWidget):
     
     def _load_sample_data(self):
         """Carga datos de ejemplo."""
+        # Campos: ISBN, Número Ejemplar, Estado Ejemplar, Número Estante, Número Pasillo
         sample_copies = [
-            (1, "LIB-001-A", "Cien años de soledad", "Disponible", "Estante A-1", "Bueno"),
-            (2, "LIB-001-B", "Cien años de soledad", "Prestado", "Estante A-1", "Bueno"),
-            (3, "LIB-001-C", "Cien años de soledad", "Disponible", "Estante A-1", "Regular"),
-            (4, "LIB-002-A", "El principito", "Disponible", "Estante A-2", "Excelente"),
-            (5, "LIB-002-B", "El principito", "Prestado", "Estante A-2", "Bueno"),
-            (6, "LIB-003-A", "1984", "En reparación", "Taller", "Dañado"),
-            (7, "LIB-003-B", "1984", "Disponible", "Estante B-1", "Bueno"),
-            (8, "LIB-004-A", "Breve historia del tiempo", "Prestado", "Estante B-2", "Excelente"),
-            (9, "LIB-005-A", "El arte de la guerra", "Disponible", "Estante C-1", "Bueno"),
-            (10, "LIB-006-A", "Sapiens", "Dado de baja", "Archivo", "Malo"),
+            ("978-0307474728", "1", "Disponible", "1", "A"),
+            ("978-0307474728", "2", "Prestado", "1", "A"),
+            ("978-0307474728", "3", "Disponible", "1", "A"),
+            ("978-0156012195", "1", "Disponible", "2", "A"),
+            ("978-0156012195", "2", "Prestado", "2", "A"),
+            ("978-0451524935", "1", "En reparación", "1", "B"),
+            ("978-0451524935", "2", "Disponible", "1", "B"),
+            ("978-0553380163", "1", "Prestado", "2", "B"),
+            ("978-1599869773", "1", "Disponible", "1", "C"),
+            ("978-0062316097", "1", "Dado de baja", "3", "C"),
         ]
         
         self._populate_table(sample_copies)
@@ -202,23 +212,14 @@ class EjemplaresView(QWidget):
                 item.setTextAlignment(Qt.AlignCenter)
                 
                 # Colorear estado
-                if col == 3:
+                if col == 2:  # Estado Ejemplar
                     if value == "Disponible":
                         item.setForeground(Qt.darkGreen)
                     elif value == "Prestado":
                         item.setForeground(Qt.blue)
                     elif value == "En reparación":
                         item.setForeground(Qt.darkYellow)
-                    else:
-                        item.setForeground(Qt.red)
-                
-                # Colorear condición
-                if col == 5:
-                    if value == "Excelente":
-                        item.setForeground(Qt.darkGreen)
-                    elif value == "Regular":
-                        item.setForeground(Qt.darkYellow)
-                    elif value in ["Dañado", "Malo"]:
+                    else:  # Dado de baja
                         item.setForeground(Qt.red)
                 
                 self.table.setItem(row, col, item)
@@ -232,7 +233,7 @@ class EjemplaresView(QWidget):
         loaned = 0
         
         for row in range(total):
-            item = self.table.item(row, 3)
+            item = self.table.item(row, 2)  # Columna Estado Ejemplar
             if item:
                 if item.text() == "Disponible":
                     available += 1
@@ -253,7 +254,7 @@ class EjemplaresView(QWidget):
             
             if search_text:
                 match = False
-                for col in [1, 2]:  # Código, Libro
+                for col in [0, 1]:  # ISBN, Número Ejemplar
                     item = self.table.item(row, col)
                     if item and search_text in item.text().lower():
                         match = True
@@ -261,7 +262,7 @@ class EjemplaresView(QWidget):
                 show = match
             
             if show and status != "Todos":
-                status_item = self.table.item(row, 3)
+                status_item = self.table.item(row, 2)  # Estado Ejemplar
                 if status_item and status_item.text() != status:
                     show = False
             

@@ -34,10 +34,11 @@ class LibrosView(QWidget):
         header_layout = QHBoxLayout()
         
         title = QLabel("📚 Catálogo de Libros")
+        theme = Settings.get_theme()
         title.setStyleSheet(f"""
             font-size: {Settings.FONT_SIZE_TITLE}pt;
             font-weight: bold;
-            color: {Settings.TEXT_COLOR};
+            color: {theme['TEXT_COLOR']};
         """)
         header_layout.addWidget(title)
         header_layout.addStretch()
@@ -70,12 +71,12 @@ class LibrosView(QWidget):
         
         # Barra de búsqueda
         search_frame = QFrame()
-        search_frame.setStyleSheet("""
-            QFrame {
-                background-color: white;
+        search_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['CARD_BG']};
                 border-radius: 8px;
                 padding: 10px;
-            }
+            }}
         """)
         search_layout = QHBoxLayout(search_frame)
         search_layout.setContentsMargins(10, 5, 10, 5)
@@ -86,27 +87,33 @@ class LibrosView(QWidget):
         
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Buscar por título, autor o ISBN...")
-        self.search_input.setStyleSheet("""
-            QLineEdit {
+        self.search_input.setStyleSheet(f"""
+            QLineEdit {{
                 border: none;
                 padding: 8px;
                 font-size: 11pt;
-            }
+                background-color: {theme['CARD_BG']};
+                color: {theme['TEXT_COLOR']};
+            }}
         """)
         self.search_input.textChanged.connect(self._filter_books)
         search_layout.addWidget(self.search_input, 1)
         
         # Filtro por categoría
-        search_layout.addWidget(QLabel("Categoría:"))
+        cat_label = QLabel("Categoría:")
+        cat_label.setStyleSheet(f"color: {theme['TEXT_COLOR']};")
+        search_layout.addWidget(cat_label)
         self.category_filter = QComboBox()
         self.category_filter.addItems(["Todas", "Computación", "Software", "Química"])
-        self.category_filter.setStyleSheet("""
-            QComboBox {
+        self.category_filter.setStyleSheet(f"""
+            QComboBox {{
                 padding: 8px;
-                border: 1px solid #E0E0E0;
+                border: 1px solid {theme['BORDER_COLOR']};
                 border-radius: 4px;
                 min-width: 120px;
-            }
+                background-color: {theme['CARD_BG']};
+                color: {theme['TEXT_COLOR']};
+            }}
         """)
         self.category_filter.currentTextChanged.connect(self._filter_books)
         search_layout.addWidget(self.category_filter)
@@ -135,27 +142,29 @@ class LibrosView(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.Stretch)
         
-        self.table.setStyleSheet("""
-            QTableWidget {
-                background-color: white;
-                border: 1px solid #E0E0E0;
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: {theme['CARD_BG']};
+                border: 1px solid {theme['BORDER_COLOR']};
                 border-radius: 8px;
-                gridline-color: #E0E0E0;
-            }
-            QTableWidget::item {
+                gridline-color: {theme['BORDER_COLOR']};
+                color: {theme['TEXT_COLOR']};
+            }}
+            QTableWidget::item {{
                 padding: 8px;
-            }
-            QTableWidget::item:selected {
-                background-color: #2196F3;
+            }}
+            QTableWidget::item:selected {{
+                background-color: {Settings.PRIMARY_COLOR};
                 color: white;
-            }
-            QHeaderView::section {
-                background-color: #F5F5F5;
+            }}
+            QHeaderView::section {{
+                background-color: {theme['USER_FRAME_BG']};
+                color: {theme['TEXT_COLOR']};
                 padding: 10px;
                 border: none;
-                border-bottom: 2px solid #E0E0E0;
+                border-bottom: 2px solid {theme['BORDER_COLOR']};
                 font-weight: bold;
-            }
+            }}
         """)
         
         self.table.itemSelectionChanged.connect(self._on_selection_changed)
@@ -165,16 +174,17 @@ class LibrosView(QWidget):
         
         # Estadísticas
         stats_frame = QFrame()
-        stats_frame.setStyleSheet("""
-            QFrame {
-                background-color: white;
+        stats_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['CARD_BG']};
                 border-radius: 4px;
                 padding: 5px;
-            }
+            }}
         """)
         stats_layout = QHBoxLayout(stats_frame)
         
         self.total_label = QLabel("Total: 0 libros")
+        self.total_label.setStyleSheet(f"color: {theme['TEXT_COLOR']};")
         stats_layout.addWidget(self.total_label)
         stats_layout.addStretch()
         self.available_label = QLabel("Disponibles: 0")

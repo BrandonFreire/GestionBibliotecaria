@@ -49,12 +49,13 @@ class MainWindow(QMainWindow):
     
     def _apply_styles(self):
         """Aplica los estilos CSS de la aplicación."""
+        theme = Settings.get_theme()
         self.setStyleSheet(f"""
             QMainWindow {{
-                background-color: {Settings.BACKGROUND_COLOR};
+                background-color: {theme['BG_COLOR']};
             }}
             QLabel {{
-                color: {Settings.TEXT_COLOR};
+                color: {theme['TEXT_COLOR']};
                 font-family: {Settings.FONT_FAMILY};
                 font-size: {Settings.FONT_SIZE_NORMAL}pt;
             }}
@@ -64,14 +65,14 @@ class MainWindow(QMainWindow):
             }}
             QPushButton#nav_button {{
                 background-color: transparent;
-                color: {Settings.TEXT_COLOR};
+                color: {theme['TEXT_COLOR']};
                 text-align: left;
                 padding: 12px 15px;
                 border-radius: 4px;
                 font-size: 11pt;
             }}
             QPushButton#nav_button:hover {{
-                background-color: #E3F2FD;
+                background-color: {theme['NAV_HOVER']};
             }}
             QPushButton#nav_button_active {{
                 background-color: {Settings.PRIMARY_COLOR};
@@ -82,15 +83,31 @@ class MainWindow(QMainWindow):
                 font-size: 11pt;
             }}
             QFrame#nav_frame {{
-                background-color: white;
-                border-right: 1px solid #E0E0E0;
+                background-color: {theme['SIDEBAR_BG']};
+                border-right: 1px solid {theme['BORDER_COLOR']};
             }}
             QFrame#content_frame {{
-                background-color: {Settings.BACKGROUND_COLOR};
+                background-color: {theme['BG_COLOR']};
             }}
             QStatusBar {{
-                background-color: white;
-                border-top: 1px solid #E0E0E0;
+                background-color: {theme['CARD_BG']};
+                color: {theme['TEXT_COLOR']};
+                border-top: 1px solid {theme['BORDER_COLOR']};
+            }}
+            QMenuBar {{
+                background-color: {theme['CARD_BG']};
+                color: {theme['TEXT_COLOR']};
+            }}
+            QMenuBar::item:selected {{
+                background-color: {theme['NAV_HOVER']};
+            }}
+            QMenu {{
+                background-color: {theme['CARD_BG']};
+                color: {theme['TEXT_COLOR']};
+                border: 1px solid {theme['BORDER_COLOR']};
+            }}
+            QMenu::item:selected {{
+                background-color: {theme['NAV_HOVER']};
             }}
         """)
     
@@ -149,7 +166,8 @@ class MainWindow(QMainWindow):
         
         # Panel de contenido
         self.content_stack = QStackedWidget()
-        self.content_stack.setStyleSheet(f"background-color: {Settings.BACKGROUND_COLOR};")
+        theme = Settings.get_theme()
+        self.content_stack.setStyleSheet(f"background-color: {theme['BG_COLOR']};")
         
         # Crear vistas
         self.libros_view = LibrosView(self.db_connection)
@@ -183,13 +201,14 @@ class MainWindow(QMainWindow):
         nav_layout.setSpacing(5)
         
         # Header con usuario
+        theme = Settings.get_theme()
         user_frame = QFrame()
-        user_frame.setStyleSheet("""
-            QFrame {
-                background-color: #E3F2FD;
+        user_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['USER_FRAME_BG']};
                 border-radius: 8px;
                 padding: 10px;
-            }
+            }}
         """)
         user_layout = QVBoxLayout(user_frame)
         user_layout.setContentsMargins(10, 10, 10, 10)
@@ -202,7 +221,7 @@ class MainWindow(QMainWindow):
         user_name = QLabel(self.current_user.get('name', 'Usuario'))
         user_name.setStyleSheet(f"""
             font-weight: bold;
-            color: {Settings.TEXT_COLOR};
+            color: {theme['TEXT_COLOR']};
             background: transparent;
         """)
         user_name.setAlignment(Qt.AlignCenter)
@@ -223,7 +242,7 @@ class MainWindow(QMainWindow):
         # Título de navegación
         nav_title = QLabel("MENÚ")
         nav_title.setStyleSheet(f"""
-            color: #9E9E9E;
+            color: {theme['TEXT_SECONDARY']};
             font-size: 9pt;
             font-weight: bold;
             letter-spacing: 1px;
@@ -241,6 +260,25 @@ class MainWindow(QMainWindow):
         
         nav_layout.addStretch()
         
+        # Botón de cambiar tema
+        self.theme_btn = QPushButton("🌙 Modo Oscuro" if not Settings.DARK_MODE else "☀️ Modo Claro")
+        self.theme_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {theme['TEXT_COLOR']};
+                text-align: left;
+                padding: 12px 15px;
+                border-radius: 4px;
+                font-size: 11pt;
+            }}
+            QPushButton:hover {{
+                background-color: {theme['NAV_HOVER']};
+            }}
+        """)
+        self.theme_btn.setCursor(Qt.PointingHandCursor)
+        self.theme_btn.clicked.connect(self._toggle_theme)
+        nav_layout.addWidget(self.theme_btn)
+        
         # Botón de cerrar sesión
         logout_btn = QPushButton("🚪 Cerrar Sesión")
         logout_btn.setStyleSheet(f"""
@@ -253,7 +291,7 @@ class MainWindow(QMainWindow):
                 font-size: 11pt;
             }}
             QPushButton:hover {{
-                background-color: #FFEBEE;
+                background-color: {theme['LOGOUT_HOVER']};
             }}
         """)
         logout_btn.setCursor(Qt.PointingHandCursor)
@@ -377,6 +415,14 @@ class MainWindow(QMainWindow):
         if reply == QMessageBox.Yes:
             self.current_user = None
             self._show_login()
+    
+    def _toggle_theme(self):
+        """Alterna entre modo claro y oscuro."""
+        Settings.toggle_theme()
+        # Actualizar texto del botón
+        self.theme_btn.setText("☀️ Modo Claro" if Settings.DARK_MODE else "🌙 Modo Oscuro")
+        # Reconstruir interfaz para aplicar cambios
+        self._setup_main_interface()
     
     def _show_about(self):
         """Muestra información sobre la aplicación."""

@@ -60,8 +60,9 @@ class LoginView(QWidget):
         main_layout.addWidget(left_panel, 1)
         
         # Panel derecho - Formulario de login
+        theme = Settings.get_theme()
         right_panel = QFrame()
-        right_panel.setStyleSheet(f"background-color: {Settings.BACKGROUND_COLOR};")
+        right_panel.setStyleSheet(f"background-color: {theme['BG_COLOR']};")
         right_layout = QVBoxLayout(right_panel)
         right_layout.setAlignment(Qt.AlignCenter)
         right_layout.setContentsMargins(60, 40, 60, 40)
@@ -71,7 +72,7 @@ class LoginView(QWidget):
         title.setStyleSheet(f"""
             font-size: {Settings.FONT_SIZE_TITLE}pt;
             font-weight: bold;
-            color: {Settings.TEXT_COLOR};
+            color: {theme['TEXT_COLOR']};
             margin-bottom: 20px;
         """)
         title.setAlignment(Qt.AlignCenter)
@@ -79,54 +80,58 @@ class LoginView(QWidget):
         
         # Formulario
         form_frame = QFrame()
-        form_frame.setStyleSheet("""
-            QFrame {
-                background-color: white;
+        form_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['CARD_BG']};
                 border-radius: 8px;
                 padding: 20px;
-            }
+            }}
         """)
         form_layout = QVBoxLayout(form_frame)
         form_layout.setSpacing(15)
         
         # Campo de usuario
         user_label = QLabel("Usuario")
-        user_label.setStyleSheet(f"color: {Settings.TEXT_COLOR}; font-weight: bold;")
+        user_label.setStyleSheet(f"color: {theme['TEXT_COLOR']}; font-weight: bold;")
         form_layout.addWidget(user_label)
         
         self.user_input = QLineEdit()
         self.user_input.setPlaceholderText("Ingrese su usuario")
-        self.user_input.setStyleSheet("""
-            QLineEdit {
+        self.user_input.setStyleSheet(f"""
+            QLineEdit {{
                 padding: 12px;
-                border: 1px solid #E0E0E0;
+                border: 1px solid {theme['BORDER_COLOR']};
                 border-radius: 4px;
                 font-size: 11pt;
-            }
-            QLineEdit:focus {
-                border: 2px solid #2196F3;
-            }
+                background-color: {theme['INPUT_BG']};
+                color: {theme['TEXT_COLOR']};
+            }}
+            QLineEdit:focus {{
+                border: 2px solid {Settings.PRIMARY_COLOR};
+            }}
         """)
         form_layout.addWidget(self.user_input)
         
         # Campo de contraseña
         pass_label = QLabel("Contraseña")
-        pass_label.setStyleSheet(f"color: {Settings.TEXT_COLOR}; font-weight: bold;")
+        pass_label.setStyleSheet(f"color: {theme['TEXT_COLOR']}; font-weight: bold;")
         form_layout.addWidget(pass_label)
         
         self.pass_input = QLineEdit()
         self.pass_input.setPlaceholderText("Ingrese su contraseña")
         self.pass_input.setEchoMode(QLineEdit.Password)
-        self.pass_input.setStyleSheet("""
-            QLineEdit {
+        self.pass_input.setStyleSheet(f"""
+            QLineEdit {{
                 padding: 12px;
-                border: 1px solid #E0E0E0;
+                border: 1px solid {theme['BORDER_COLOR']};
                 border-radius: 4px;
                 font-size: 11pt;
-            }
-            QLineEdit:focus {
-                border: 2px solid #2196F3;
-            }
+                background-color: {theme['INPUT_BG']};
+                color: {theme['TEXT_COLOR']};
+            }}
+            QLineEdit:focus {{
+                border: 2px solid {Settings.PRIMARY_COLOR};
+            }}
         """)
         self.pass_input.returnPressed.connect(self._login)
         form_layout.addWidget(self.pass_input)
@@ -165,7 +170,7 @@ class LoginView(QWidget):
         
         # Versión
         version_label = QLabel(f"v{Settings.APP_VERSION}")
-        version_label.setStyleSheet("color: #9E9E9E; font-size: 9pt; margin-top: 20px;")
+        version_label.setStyleSheet(f"color: {theme['TEXT_SECONDARY']}; font-size: 9pt; margin-top: 20px;")
         version_label.setAlignment(Qt.AlignCenter)
         right_layout.addWidget(version_label)
         

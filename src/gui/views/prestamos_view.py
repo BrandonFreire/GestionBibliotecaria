@@ -30,10 +30,11 @@ class PrestamosView(QWidget):
         header_layout = QHBoxLayout()
         
         title = QLabel("📋 Historial de Préstamos")
+        theme = Settings.get_theme()
         title.setStyleSheet(f"""
             font-size: {Settings.FONT_SIZE_TITLE}pt;
             font-weight: bold;
-            color: {Settings.TEXT_COLOR};
+            color: {theme['TEXT_COLOR']};
         """)
         header_layout.addWidget(title)
         header_layout.addStretch()
@@ -65,12 +66,12 @@ class PrestamosView(QWidget):
         
         # Filtros
         filter_frame = QFrame()
-        filter_frame.setStyleSheet("""
-            QFrame {
-                background-color: white;
+        filter_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['CARD_BG']};
                 border-radius: 8px;
                 padding: 10px;
-            }
+            }}
         """)
         filter_layout = QHBoxLayout(filter_frame)
         filter_layout.setContentsMargins(10, 5, 10, 5)
@@ -80,39 +81,26 @@ class PrestamosView(QWidget):
         filter_layout.addWidget(search_icon)
         
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Buscar por usuario o libro...")
-        self.search_input.setStyleSheet("""
-            QLineEdit {
+        self.search_input.setPlaceholderText("Buscar por ISBN o cédula...")
+        self.search_input.setStyleSheet(f"""
+            QLineEdit {{
                 border: none;
                 padding: 8px;
                 font-size: 11pt;
-            }
+                background-color: {theme['CARD_BG']};
+                color: {theme['TEXT_COLOR']};
+            }}
         """)
         self.search_input.textChanged.connect(self._filter_loans)
         filter_layout.addWidget(self.search_input, 1)
-        
-        # Filtro por estado
-        filter_layout.addWidget(QLabel("Estado:"))
-        self.status_filter = QComboBox()
-        self.status_filter.addItems(["Todos", "Activo", "Devuelto", "Vencido"])
-        self.status_filter.setStyleSheet("""
-            QComboBox {
-                padding: 8px;
-                border: 1px solid #E0E0E0;
-                border-radius: 4px;
-                min-width: 120px;
-            }
-        """)
-        self.status_filter.currentTextChanged.connect(self._filter_loans)
-        filter_layout.addWidget(self.status_filter)
         
         layout.addWidget(filter_frame)
         
         # Tabla de préstamos
         self.table = QTableWidget()
-        self.table.setColumnCount(7)
+        self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
-            "ID", "Usuario", "Libro", "Fecha Préstamo", "Fecha Vencimiento", "Fecha Devolución", "Estado"
+            "ISBN", "Número Ejemplar", "Cédula Solicitante", "Fecha Préstamo", "Fecha Devolución", "Fecha Devolución Máxima"
         ])
         
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -123,34 +111,35 @@ class PrestamosView(QWidget):
         
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.Stretch)
-        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
         
-        self.table.setStyleSheet("""
-            QTableWidget {
-                background-color: white;
-                border: 1px solid #E0E0E0;
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: {theme['CARD_BG']};
+                border: 1px solid {theme['BORDER_COLOR']};
                 border-radius: 8px;
-                gridline-color: #E0E0E0;
-            }
-            QTableWidget::item {
+                gridline-color: {theme['BORDER_COLOR']};
+                color: {theme['TEXT_COLOR']};
+            }}
+            QTableWidget::item {{
                 padding: 8px;
-            }
-            QTableWidget::item:selected {
-                background-color: #2196F3;
+            }}
+            QTableWidget::item:selected {{
+                background-color: {Settings.PRIMARY_COLOR};
                 color: white;
-            }
-            QHeaderView::section {
-                background-color: #F5F5F5;
+            }}
+            QHeaderView::section {{
+                background-color: {theme['USER_FRAME_BG']};
+                color: {theme['TEXT_COLOR']};
                 padding: 10px;
                 border: none;
-                border-bottom: 2px solid #E0E0E0;
+                border-bottom: 2px solid {theme['BORDER_COLOR']};
                 font-weight: bold;
-            }
+            }}
         """)
         
         self.table.itemSelectionChanged.connect(self._on_selection_changed)
@@ -159,38 +148,40 @@ class PrestamosView(QWidget):
         
         # Estadísticas
         stats_frame = QFrame()
-        stats_frame.setStyleSheet("""
-            QFrame {
-                background-color: white;
+        stats_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['CARD_BG']};
                 border-radius: 4px;
                 padding: 5px;
-            }
+            }}
         """)
         stats_layout = QHBoxLayout(stats_frame)
         
         self.total_label = QLabel("Total: 0 préstamos")
+        self.total_label.setStyleSheet(f"color: {theme['TEXT_COLOR']};")
         stats_layout.addWidget(self.total_label)
         stats_layout.addStretch()
         
-        self.active_label = QLabel("Activos: 0")
-        self.active_label.setStyleSheet(f"color: {Settings.PRIMARY_COLOR};")
-        stats_layout.addWidget(self.active_label)
+        self.pending_label = QLabel("Pendientes: 0")
+        self.pending_label.setStyleSheet(f"color: {Settings.PRIMARY_COLOR};")
+        stats_layout.addWidget(self.pending_label)
         
-        self.overdue_label = QLabel("Vencidos: 0")
-        self.overdue_label.setStyleSheet(f"color: {Settings.ERROR_COLOR};")
-        stats_layout.addWidget(self.overdue_label)
+        self.returned_label = QLabel("Devueltos: 0")
+        self.returned_label.setStyleSheet(f"color: {Settings.SUCCESS_COLOR};")
+        stats_layout.addWidget(self.returned_label)
         
         layout.addWidget(stats_frame)
     
     def _load_sample_data(self):
         """Carga datos de ejemplo."""
+        # Campos: ISBN, Número Ejemplar, Cédula Solicitante, Fecha Préstamo, Fecha Devolución, Fecha Devolución Máxima
         sample_loans = [
-            (1, "Juan Pérez", "Cien años de soledad", "2026-01-10", "2026-01-24", "-", "Activo"),
-            (2, "María García", "El principito", "2026-01-05", "2026-01-19", "-", "Vencido"),
-            (3, "Carlos López", "1984", "2026-01-15", "2026-01-29", "-", "Activo"),
-            (4, "Ana Martínez", "Breve historia del tiempo", "2025-12-20", "2026-01-03", "2026-01-02", "Devuelto"),
-            (5, "Pedro Sánchez", "El arte de la guerra", "2025-12-15", "2025-12-29", "2025-12-28", "Devuelto"),
-            (6, "Laura Torres", "Sapiens", "2026-01-12", "2026-01-26", "-", "Activo"),
+            ("978-0307474728", "1", "1102345678", "2026-01-10", "-", "2026-01-24"),
+            ("978-0156012195", "2", "1103456789", "2026-01-05", "-", "2026-01-19"),
+            ("978-0451524935", "1", "1104567890", "2026-01-15", "-", "2026-01-29"),
+            ("978-0553380163", "1", "1105678901", "2025-12-20", "2026-01-02", "2026-01-03"),
+            ("978-1599869773", "3", "1106789012", "2025-12-15", "2025-12-28", "2025-12-29"),
+            ("978-0062316097", "1", "1107890123", "2026-01-12", "-", "2026-01-26"),
         ]
         
         self._populate_table(sample_loans)
@@ -204,14 +195,12 @@ class PrestamosView(QWidget):
                 item = QTableWidgetItem(str(value))
                 item.setTextAlignment(Qt.AlignCenter)
                 
-                # Colorear estado
-                if col == 6:
-                    if value == "Activo":
-                        item.setForeground(Qt.darkGreen)
-                    elif value == "Vencido":
-                        item.setForeground(Qt.red)
+                # Colorear fecha devolución (pendiente = rojo claro, devuelto = verde)
+                if col == 4:  # Fecha Devolución
+                    if value == "-":
+                        item.setForeground(Qt.darkYellow)
                     else:
-                        item.setForeground(Qt.gray)
+                        item.setForeground(Qt.darkGreen)
                 
                 self.table.setItem(row, col, item)
         
@@ -220,42 +209,36 @@ class PrestamosView(QWidget):
     def _update_stats(self):
         """Actualiza las estadísticas."""
         total = self.table.rowCount()
-        active = 0
-        overdue = 0
+        pending = 0
+        returned = 0
         
         for row in range(total):
-            item = self.table.item(row, 6)
+            item = self.table.item(row, 4)  # Columna Fecha Devolución
             if item:
-                if item.text() == "Activo":
-                    active += 1
-                elif item.text() == "Vencido":
-                    overdue += 1
+                if item.text() == "-":
+                    pending += 1
+                else:
+                    returned += 1
         
         self.total_label.setText(f"Total: {total} préstamos")
-        self.active_label.setText(f"Activos: {active}")
-        self.overdue_label.setText(f"Vencidos: {overdue}")
+        self.pending_label.setText(f"Pendientes: {pending}")
+        self.returned_label.setText(f"Devueltos: {returned}")
     
     def _filter_loans(self):
         """Filtra los préstamos según la búsqueda."""
         search_text = self.search_input.text().lower()
-        status = self.status_filter.currentText()
         
         for row in range(self.table.rowCount()):
             show = True
             
             if search_text:
                 match = False
-                for col in [1, 2]:  # Usuario, Libro
+                for col in [0, 2]:  # ISBN, Cédula Solicitante
                     item = self.table.item(row, col)
                     if item and search_text in item.text().lower():
                         match = True
                         break
                 show = match
-            
-            if show and status != "Todos":
-                status_item = self.table.item(row, 6)
-                if status_item and status_item.text() != status:
-                    show = False
             
             self.table.setRowHidden(row, not show)
     
@@ -264,9 +247,10 @@ class PrestamosView(QWidget):
         selected = self.table.selectedItems()
         if selected:
             row = selected[0].row()
-            status_item = self.table.item(row, 6)
+            # Habilitar devolución si no tiene fecha de devolución
+            return_date_item = self.table.item(row, 4)
             self.return_btn.setEnabled(
-                status_item and status_item.text() in ["Activo", "Vencido"]
+                return_date_item and return_date_item.text() == "-"
             )
         else:
             self.return_btn.setEnabled(False)
@@ -276,26 +260,26 @@ class PrestamosView(QWidget):
         selected = self.table.selectedItems()
         if selected:
             row = selected[0].row()
-            book = self.table.item(row, 2).text()
-            user = self.table.item(row, 1).text()
+            isbn = self.table.item(row, 0).text()
+            cedula = self.table.item(row, 2).text()
             
             reply = QMessageBox.question(
                 self,
                 "Confirmar Devolución",
-                f"¿Registrar devolución de:\n\n\"{book}\"\npor {user}?",
+                f"¿Registrar devolución del préstamo?\n\nISBN: {isbn}\nCédula: {cedula}",
                 QMessageBox.Yes | QMessageBox.No
             )
             
             if reply == QMessageBox.Yes:
-                # Actualizar tabla
-                self.table.item(row, 5).setText("2026-01-19")
-                self.table.item(row, 6).setText("Devuelto")
-                self.table.item(row, 6).setForeground(Qt.gray)
+                # Actualizar tabla - establecer fecha de devolución actual
+                return_item = self.table.item(row, 4)
+                return_item.setText("2026-01-19")
+                return_item.setForeground(Qt.darkGreen)
                 self._update_stats()
                 self.return_btn.setEnabled(False)
                 
                 QMessageBox.information(
                     self,
                     "Devolución Registrada",
-                    f"Se ha registrado la devolución de:\n\"{book}\""
+                    f"Se ha registrado la devolución del préstamo.\nISBN: {isbn}"
                 )
