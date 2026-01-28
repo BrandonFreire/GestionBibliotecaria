@@ -5,7 +5,7 @@ Conectada a la base de datos distribuida.
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QFrame, QTableWidget,
-    QTableWidgetItem, QHeaderView, QMessageBox
+    QTableWidgetItem, QHeaderView, QMessageBox, QDialog
 )
 from PyQt5.QtCore import Qt
 
