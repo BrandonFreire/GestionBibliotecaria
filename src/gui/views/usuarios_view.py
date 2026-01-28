@@ -1,5 +1,6 @@
 """
 Vista de usuarios registrados - PyQt5.
+Conectada a la base de datos distribuida.
 """
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
@@ -9,16 +10,29 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 
 from config.settings import Settings
+from database.distributed_connection import DistributedConnection
+from database.s_p_usuarios import SP_Usuarios
+from gui.dialogs.usuario_dialog import UsuarioDialog
 
 
 class UsuariosView(QWidget):
     """Vista de usuarios registrados."""
     
     def __init__(self, db_connection=None):
+        """
+        Inicializa la vista de usuarios.
+        
+        Args:
+            db_connection: Conexión legacy (ignorada, se usa DistributedConnection).
+        """
         super().__init__()
-        self.db_connection = db_connection
+        
+        # Crear conexión distribuida propia
+        self.dist_conn = DistributedConnection()
+        self.sp_usuarios = SP_Usuarios(self.dist_conn)
+        
         self._create_widgets()
-        self._load_sample_data()
+        self.load_data()  # Cargar datos reales de la BD
     
     def _create_widgets(self):
         """Crea los widgets de la vista."""
@@ -39,8 +53,65 @@ class UsuariosView(QWidget):
         header_layout.addWidget(title)
         header_layout.addStretch()
         
+        # Botón de refrescar
+        refresh_btn = QPushButton("🔄 Refrescar")
+        refresh_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Settings.SECONDARY_COLOR};
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                font-size: 10pt;
+            }}
+            QPushButton:hover {{
+                background-color: {Settings.PRIMARY_COLOR};
+            }}
+        """)
+        refresh_btn.setCursor(Qt.PointingHandCursor)
+        refresh_btn.clicked.connect(self.load_data)
+        header_layout.addWidget(refresh_btn)
+        
+        # Botón de editar
+        edit_btn = QPushButton("✏️ Editar")
+        edit_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: #FFA500;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                font-size: 10pt;
+            }}
+            QPushButton:hover {{
+                background-color: #FF8C00;
+            }}
+        """)
+        edit_btn.setCursor(Qt.PointingHandCursor)
+        edit_btn.clicked.connect(self._edit_user)
+        header_layout.addWidget(edit_btn)
+        
+        # Botón de eliminar
+        delete_btn = QPushButton("🗑️ Eliminar")
+        delete_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: #DC3545;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                font-size: 10pt;
+            }}
+            QPushButton:hover {{
+                background-color: #C82333;
+            }}
+        """)
+        delete_btn.setCursor(Qt.PointingHandCursor)
+        delete_btn.clicked.connect(self._delete_user)
+        header_layout.addWidget(delete_btn)
+        
         # Botón de nuevo usuario
-        new_user_btn = QPushButton("➕ Nuevo Usuario")
+        new_user_btn = QPushButton("➕ Nuevo")
         new_user_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Settings.PRIMARY_COLOR};
@@ -93,9 +164,9 @@ class UsuariosView(QWidget):
         
         # Tabla de usuarios
         self.table = QTableWidget()
-        self.table.setColumnCount(5)
+        self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
-            "Cédula", "Nombre", "Apellido", "Email", "Celular"
+            "ID Biblioteca", "Cédula", "Nombre", "Apellido", "Email", "Celular"
         ])
         
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -106,10 +177,11 @@ class UsuariosView(QWidget):
         
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.Stretch)
         header.setSectionResizeMode(3, QHeaderView.Stretch)
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.Stretch)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         
         self.table.setStyleSheet(f"""
             QTableWidget {{
@@ -160,28 +232,47 @@ class UsuariosView(QWidget):
         
         layout.addWidget(stats_frame)
     
-    def _load_sample_data(self):
-        """Carga datos de ejemplo."""
-        # Campos: Cedula, Nombre, Apellido, Email, Celular
-        sample_users = [
-            ("1102345678", "Juan", "Pérez", "juan.perez@email.com", "0991234567"),
-            ("1103456789", "María", "García", "maria.garcia@email.com", "0982345678"),
-            ("1104567890", "Carlos", "López", "carlos.lopez@email.com", "0973456789"),
-            ("1105678901", "Ana", "Martínez", "ana.martinez@email.com", "0964567890"),
-            ("1106789012", "Pedro", "Sánchez", "pedro.sanchez@email.com", "0955678901"),
-            ("1107890123", "Laura", "Torres", "laura.torres@email.com", "0946789012"),
-        ]
-        
-        self._populate_table(sample_users)
+    def load_data(self):
+        """Carga los datos de usuarios desde la base de datos."""
+        try:
+            # Consultar usuarios desde la base de datos
+            usuarios = self.sp_usuarios.consultar_usuario(node="FIS")
+            
+            if usuarios:
+                self._populate_table(usuarios)
+            else:
+                self.table.setRowCount(0)
+                self._update_stats()
+                
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error al cargar usuarios: {str(e)}"
+            )
     
-    def _populate_table(self, users):
-        """Llena la tabla con los usuarios."""
-        self.table.setRowCount(len(users))
+    def _populate_table(self, usuarios):
+        """Llena la tabla con los usuarios desde la BD."""
+        self.table.setRowCount(len(usuarios))
         
-        for row, user in enumerate(users):
-            for col, value in enumerate(user):
+        for row, usuario in enumerate(usuarios):
+            # Columnas: ID Biblioteca, Cédula, Nombre, Apellido, Email, Celular
+            columns = [
+                usuario.get('id_biblioteca', ''),
+                usuario.get('cedula', ''),
+                usuario.get('nombre_usuario', ''),
+                usuario.get('apellido_usuario', ''),
+                usuario.get('email_usuario', ''),
+                usuario.get('celular_usuario', '')
+            ]
+            
+            for col, value in enumerate(columns):
                 item = QTableWidgetItem(str(value))
-                item.setTextAlignment(Qt.AlignCenter if col in [0, 4] else Qt.AlignLeft | Qt.AlignVCenter)
+                # Centrar ID Biblioteca, Cédula y Celular
+                if col in [0, 1, 5]:
+                    item.setTextAlignment(Qt.AlignCenter)
+                else:
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
                 self.table.setItem(row, col, item)
         
         self._update_stats()
@@ -200,7 +291,8 @@ class UsuariosView(QWidget):
             
             if search_text:
                 match = False
-                for col in [0, 1, 2, 3]:  # Cédula, Nombre, Apellido, Email
+                # Buscar en: Cédula, Nombre, Apellido, Email
+                for col in [1, 2, 3, 4]:
                     item = self.table.item(row, col)
                     if item and search_text in item.text().lower():
                         match = True
@@ -211,21 +303,179 @@ class UsuariosView(QWidget):
     
     def _add_user(self):
         """Abre el diálogo para agregar usuario."""
-        QMessageBox.information(
+        dialog = UsuarioDialog(self, modo="agregar")
+        
+        if dialog.exec_() == QDialog.Accepted:
+            data = dialog.get_data()
+            
+            if data:
+                try:
+                    # Llamar al procedimiento almacenado
+                    success = self.sp_usuarios.insertar_usuario(
+                        id_biblioteca=data['id_biblioteca'],
+                        cedula=data['cedula'],
+                        nombre_usuario=data['nombre_usuario'],
+                        apellido_usuario=data['apellido_usuario'],
+                        email_usuario=data['email_usuario'],
+                        celular_usuario=data['celular_usuario'],
+                        node='FIS'
+                    )
+                    
+                    if success:
+                        QMessageBox.information(
+                            self,
+                            "Éxito",
+                            f"Usuario {data['nombre_usuario']} {data['apellido_usuario']} agregado correctamente."
+                        )
+                        self.load_data()  # Recargar tabla
+                    else:
+                        QMessageBox.warning(
+                            self,
+                            "Advertencia",
+                            "No se pudo agregar el usuario. Verifique que la cédula no exista."
+                        )
+                        
+                except Exception as e:
+                    QMessageBox.critical(
+                        self,
+                        "Error",
+                        f"Error al agregar usuario: {str(e)}"
+                    )
+    
+    def _edit_user(self):
+        """Abre el diálogo para editar usuario seleccionado."""
+        # Verificar que hay una fila seleccionada
+        current_row = self.table.currentRow()
+        
+        if current_row < 0:
+            QMessageBox.warning(
+                self,
+                "Selección Requerida",
+                "Por favor seleccione un usuario para editar."
+            )
+            return
+        
+        # Obtener datos actuales de la fila
+        usuario_data = {
+            'id_biblioteca': self.table.item(current_row, 0).text(),
+            'cedula': self.table.item(current_row, 1).text(),
+            'nombre_usuario': self.table.item(current_row, 2).text(),
+            'apellido_usuario': self.table.item(current_row, 3).text(),
+            'email_usuario': self.table.item(current_row, 4).text(),
+            'celular_usuario': self.table.item(current_row, 5).text()
+        }
+        
+        # Abrir diálogo en modo editar
+        dialog = UsuarioDialog(self, modo="editar", usuario_data=usuario_data)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            data = dialog.get_data()
+            
+            if data:
+                try:
+                    # Llamar al procedimiento almacenado
+                    success = self.sp_usuarios.actualizar_usuario(
+                        id_biblioteca=data['id_biblioteca'],
+                        cedula=data['cedula'],
+                        nombre_usuario=data['nombre_usuario'],
+                        apellido_usuario=data['apellido_usuario'],
+                        email_usuario=data['email_usuario'],
+                        celular_usuario=data['celular_usuario'],
+                        node='FIS'
+                    )
+                    
+                    if success:
+                        QMessageBox.information(
+                            self,
+                            "Éxito",
+                            f"Usuario {data['nombre_usuario']} {data['apellido_usuario']} actualizado correctamente."
+                        )
+                        self.load_data()  # Recargar tabla
+                    else:
+                        QMessageBox.warning(
+                            self,
+                            "Advertencia",
+                            "No se pudo actualizar el usuario."
+                        )
+                        
+                except Exception as e:
+                    QMessageBox.critical(
+                        self,
+                        "Error",
+                        f"Error al actualizar usuario: {str(e)}"
+                    )
+    
+    def _delete_user(self):
+        """Elimina el usuario seleccionado."""
+        # Verificar que hay una fila seleccionada
+        current_row = self.table.currentRow()
+        
+        if current_row < 0:
+            QMessageBox.warning(
+                self,
+                "Selección Requerida",
+                "Por favor seleccione un usuario para eliminar."
+            )
+            return
+        
+        # Obtener datos del usuario
+        id_biblioteca = self.table.item(current_row, 0).text()
+        cedula = self.table.item(current_row, 1).text()
+        nombre = self.table.item(current_row, 2).text()
+        apellido = self.table.item(current_row, 3).text()
+        
+        # Confirmar eliminación
+        reply = QMessageBox.question(
             self,
-            "Nuevo Usuario",
-            "Funcionalidad de agregar usuario pendiente de implementar."
+            "Confirmar Eliminación",
+            f"¿Está seguro de eliminar al usuario:\n\n"
+            f"{nombre} {apellido}\n"
+            f"Cédula: {cedula}\n\n"
+            f"Esta acción no se puede deshacer.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
         )
+        
+        if reply == QMessageBox.Yes:
+            try:
+                # Llamar al procedimiento almacenado
+                success = self.sp_usuarios.eliminar_usuario(
+                    id_biblioteca=id_biblioteca,
+                    cedula=cedula,
+                    node='FIS'
+                )
+                
+                if success:
+                    QMessageBox.information(
+                        self,
+                        "Éxito",
+                        f"Usuario {nombre} {apellido} eliminado correctamente."
+                    )
+                    self.load_data()  # Recargar tabla
+                else:
+                    QMessageBox.warning(
+                        self,
+                        "Advertencia",
+                        "No se pudo eliminar el usuario. Puede tener préstamos activos."
+                    )
+                    
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Error al eliminar usuario: {str(e)}"
+                )
     
     def _show_user_details(self, index):
         """Muestra los detalles del usuario."""
         row = index.row()
         user_info = f"""
-        <b>Cédula:</b> {self.table.item(row, 0).text()}<br>
-        <b>Nombre:</b> {self.table.item(row, 1).text()}<br>
-        <b>Apellido:</b> {self.table.item(row, 2).text()}<br>
-        <b>Email:</b> {self.table.item(row, 3).text()}<br>
-        <b>Celular:</b> {self.table.item(row, 4).text()}
+        <b>ID Biblioteca:</b> {self.table.item(row, 0).text()}<br>
+        <b>Cédula:</b> {self.table.item(row, 1).text()}<br>
+        <b>Nombre:</b> {self.table.item(row, 2).text()}<br>
+        <b>Apellido:</b> {self.table.item(row, 3).text()}<br>
+        <b>Email:</b> {self.table.item(row, 4).text()}<br>
+        <b>Celular:</b> {self.table.item(row, 5).text()}
         """
         
         QMessageBox.information(self, "Detalles del Usuario", user_info)

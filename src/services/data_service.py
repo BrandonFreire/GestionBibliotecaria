@@ -3,7 +3,7 @@ Servicio de datos - Capa de lógica de negocio.
 """
 from typing import List, Dict, Any, Optional
 from database.connection import DatabaseConnection
-from database.queries import QueryManager
+# from database.queries import QueryManager  # Archivo eliminado - usar procedimientos almacenados
 
 
 class DataService:
@@ -11,7 +11,7 @@ class DataService:
     
     def __init__(self, connection: DatabaseConnection):
         self.connection = connection
-        self.query_manager = QueryManager(connection)
+        # self.query_manager = QueryManager(connection)  # Usar procedimientos almacenados en su lugar
     
     def get_tables(self) -> List[str]:
         """Obtiene lista de tablas."""

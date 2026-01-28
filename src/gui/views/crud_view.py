@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 
 from database.connection import DatabaseConnection
-from database.queries import QueryManager
+# from database.queries import QueryManager  # Archivo eliminado - usar procedimientos almacenados
 from gui.components.tables import DataTable
 from config.settings import Settings
 
@@ -19,7 +19,8 @@ class CrudView(QWidget):
     def __init__(self, connection: DatabaseConnection):
         super().__init__()
         self.connection = connection
-        self.query_manager = QueryManager(connection) if connection.is_connected() else None
+        # self.query_manager = QueryManager(connection) if connection.is_connected() else None
+        self.query_manager = None  # Usar procedimientos almacenados en su lugar
         self._create_widgets()
     
     def _create_widgets(self):
