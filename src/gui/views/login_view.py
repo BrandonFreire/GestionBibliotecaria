@@ -9,6 +9,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QPixmap
 
 from config.settings import Settings
+from services.auth_service import AuthService
 
 
 class LoginView(QWidget):
@@ -20,6 +21,7 @@ class LoginView(QWidget):
     def __init__(self, db_connection=None):
         super().__init__()
         self.db_connection = db_connection
+        self.auth_service = AuthService(db_connection)
         self._create_widgets()
     
     def _create_widgets(self):
@@ -56,6 +58,17 @@ class LoginView(QWidget):
         """)
         welcome_label.setAlignment(Qt.AlignCenter)
         left_layout.addWidget(welcome_label)
+        
+        # Información de nodos
+        nodes_info = QLabel("Nodos: FIS | FIQA")
+        nodes_info.setStyleSheet("""
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            background: transparent;
+            margin-top: 10px;
+        """)
+        nodes_info.setAlignment(Qt.AlignCenter)
+        left_layout.addWidget(nodes_info)
         
         main_layout.addWidget(left_panel, 1)
         
@@ -166,6 +179,17 @@ class LoginView(QWidget):
         login_btn.clicked.connect(self._login)
         form_layout.addWidget(login_btn)
         
+        # Información de usuarios de prueba
+        info_label = QLabel("💡 Usuarios de prueba: admin, gestor_fis, gestor_fiqa, usuario")
+        info_label.setStyleSheet(f"""
+            color: {theme['TEXT_SECONDARY']};
+            font-size: 9pt;
+            margin-top: 10px;
+        """)
+        info_label.setAlignment(Qt.AlignCenter)
+        info_label.setWordWrap(True)
+        form_layout.addWidget(info_label)
+        
         right_layout.addWidget(form_frame)
         
         # Versión
@@ -185,17 +209,14 @@ class LoginView(QWidget):
             self._show_error("Por favor complete todos los campos")
             return
         
-        # TODO: Validar contra base de datos
-        # Por ahora, aceptamos cualquier credencial para demo
-        if username and password:
-            user_data = {
-                'username': username,
-                'name': username.title(),
-                'role': 'admin' if username == 'admin' else 'user'
-            }
+        # Autenticar con el servicio de autenticación
+        success, user_data, message = self.auth_service.authenticate(username, password)
+        
+        if success:
+            # Emitir señal de login exitoso
             self.login_successful.emit(user_data)
         else:
-            self._show_error("Usuario o contraseña incorrectos")
+            self._show_error(message)
     
     def _show_error(self, message: str):
         """Muestra un mensaje de error."""
@@ -207,3 +228,4 @@ class LoginView(QWidget):
         self.user_input.clear()
         self.pass_input.clear()
         self.error_label.hide()
+

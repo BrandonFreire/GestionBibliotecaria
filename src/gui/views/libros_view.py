@@ -149,9 +149,11 @@ class LibrosView(QWidget):
                 border-radius: 8px;
                 gridline-color: {theme['BORDER_COLOR']};
                 color: {theme['TEXT_COLOR']};
+                alternate-background-color: {theme['TABLE_ALT_ROW']};
             }}
             QTableWidget::item {{
                 padding: 8px;
+                color: {theme['TEXT_COLOR']};
             }}
             QTableWidget::item:selected {{
                 background-color: {Settings.PRIMARY_COLOR};
