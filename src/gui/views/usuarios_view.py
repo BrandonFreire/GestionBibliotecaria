@@ -34,6 +34,18 @@ class UsuariosView(QWidget):
         self._create_widgets()
         self.load_data()  # Cargar datos reales de la BD
     
+    def _get_node_for_biblioteca(self, id_biblioteca: str) -> str:
+        """
+        Determina el nodo correcto según el ID de biblioteca.
+        
+        Args:
+            id_biblioteca: ID de la biblioteca ('01' o '02').
+        
+        Returns:
+            'FIS' para biblioteca '01', 'FIQA' para biblioteca '02'.
+        """
+        return 'FIS' if id_biblioteca == '01' else 'FIQA'
+    
     def _create_widgets(self):
         """Crea los widgets de la vista."""
         layout = QVBoxLayout(self)
@@ -233,10 +245,19 @@ class UsuariosView(QWidget):
         layout.addWidget(stats_frame)
     
     def load_data(self):
-        """Carga los datos de usuarios desde la base de datos."""
+        """Carga los datos de usuarios desde la base de datos distribuida."""
         try:
-            # Consultar usuarios desde la base de datos
-            usuarios = self.sp_usuarios.consultar_usuario(node="FIS")
+            # Consultar usuarios de AMBOS nodos (fragmentación horizontal)
+            # Biblioteca '01' está en FIS, Biblioteca '02' está en FIQA
+            usuarios_fis = self.sp_usuarios.consultar_usuario(node="FIS")
+            usuarios_fiqa = self.sp_usuarios.consultar_usuario(node="FIQA")
+            
+            # Combinar resultados de ambos nodos
+            usuarios = []
+            if usuarios_fis:
+                usuarios.extend(usuarios_fis)
+            if usuarios_fiqa:
+                usuarios.extend(usuarios_fiqa)
             
             if usuarios:
                 self._populate_table(usuarios)
@@ -253,6 +274,9 @@ class UsuariosView(QWidget):
     
     def _populate_table(self, usuarios):
         """Llena la tabla con los usuarios desde la BD."""
+        # Deshabilitar sorting temporalmente para evitar problemas
+        self.table.setSortingEnabled(False)
+        
         self.table.setRowCount(len(usuarios))
         
         for row, usuario in enumerate(usuarios):
@@ -274,6 +298,9 @@ class UsuariosView(QWidget):
                 else:
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
                 self.table.setItem(row, col, item)
+        
+        # Rehabilitar sorting
+        self.table.setSortingEnabled(True)
         
         self._update_stats()
     
@@ -310,6 +337,9 @@ class UsuariosView(QWidget):
             
             if data:
                 try:
+                    # Determinar el nodo correcto según la biblioteca
+                    node = self._get_node_for_biblioteca(data['id_biblioteca'])
+                    
                     # Llamar al procedimiento almacenado
                     success = self.sp_usuarios.insertar_usuario(
                         id_biblioteca=data['id_biblioteca'],
@@ -318,7 +348,7 @@ class UsuariosView(QWidget):
                         apellido_usuario=data['apellido_usuario'],
                         email_usuario=data['email_usuario'],
                         celular_usuario=data['celular_usuario'],
-                        node='FIS'
+                        node=node
                     )
                     
                     if success:
@@ -373,6 +403,9 @@ class UsuariosView(QWidget):
             
             if data:
                 try:
+                    # Determinar el nodo correcto según la biblioteca
+                    node = self._get_node_for_biblioteca(data['id_biblioteca'])
+                    
                     # Llamar al procedimiento almacenado
                     success = self.sp_usuarios.actualizar_usuario(
                         id_biblioteca=data['id_biblioteca'],
@@ -381,7 +414,7 @@ class UsuariosView(QWidget):
                         apellido_usuario=data['apellido_usuario'],
                         email_usuario=data['email_usuario'],
                         celular_usuario=data['celular_usuario'],
-                        node='FIS'
+                        node=node
                     )
                     
                     if success:
@@ -438,11 +471,14 @@ class UsuariosView(QWidget):
         
         if reply == QMessageBox.Yes:
             try:
+                # Determinar el nodo correcto según la biblioteca
+                node = self._get_node_for_biblioteca(id_biblioteca)
+                
                 # Llamar al procedimiento almacenado
                 success = self.sp_usuarios.eliminar_usuario(
                     id_biblioteca=id_biblioteca,
                     cedula=cedula,
-                    node='FIS'
+                    node=node
                 )
                 
                 if success:
