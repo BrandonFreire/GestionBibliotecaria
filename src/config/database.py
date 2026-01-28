@@ -61,32 +61,32 @@ class DistributedDatabaseConfig:
     
     @classmethod
     def from_env(cls) -> "DistributedDatabaseConfig":
-        """Crea la configuración distribuida desde variables de entorno."""
+        """Crea la configuración distribuida con credenciales directas."""
         nodes = {}
         
-        # Configuración del nodo FIS
+        # Configuración del nodo FIS (WIN-PHDDNKD39M9 - Nodo 1)
         nodes["FIS"] = DatabaseConfig(
-            server=os.getenv("DB_FIS_SERVER", "localhost"),
-            database=os.getenv("DB_FIS_NAME", "FIS"),
-            username=os.getenv("DB_FIS_USER", "sa"),
-            password=os.getenv("DB_FIS_PASSWORD", ""),
-            driver=os.getenv("DB_DRIVER", "ODBC Driver 17 for SQL Server"),
-            trusted_connection=os.getenv("DB_TRUSTED_CONNECTION", "False").lower() == "true",
-            port=int(os.getenv("DB_FIS_PORT", "1433"))
+            server="WIN-PHDDNKD39M9",
+            database="FIS",
+            username="sa",
+            password="P@ssw0rd",
+            driver="ODBC Driver 17 for SQL Server",
+            trusted_connection=False,
+            port=1433
         )
         
-        # Configuración del nodo FIQA
+        # Configuración del nodo FIQA (Slim - Nodo 2)
         nodes["FIQA"] = DatabaseConfig(
-            server=os.getenv("DB_FIQA_SERVER", "localhost"),
-            database=os.getenv("DB_FIQA_NAME", "FIQA"),
-            username=os.getenv("DB_FIQA_USER", "sa"),
-            password=os.getenv("DB_FIQA_PASSWORD", ""),
-            driver=os.getenv("DB_DRIVER", "ODBC Driver 17 for SQL Server"),
-            trusted_connection=os.getenv("DB_TRUSTED_CONNECTION", "False").lower() == "true",
-            port=int(os.getenv("DB_FIQA_PORT", "1433"))
+            server="Slim",
+            database="FIQA",
+            username="sa",
+            password="P@ssw0rd",
+            driver="ODBC Driver 17 for SQL Server",
+            trusted_connection=False,
+            port=1433
         )
         
-        primary_node = os.getenv("DB_PRIMARY_NODE", "FIS")
+        primary_node = "FIS"
         
         return cls(nodes=nodes, primary_node=primary_node)
     
