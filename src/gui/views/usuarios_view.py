@@ -34,18 +34,6 @@ class UsuariosView(QWidget):
         self._create_widgets()
         self.load_data()  # Cargar datos reales de la BD
     
-    def _get_node_for_biblioteca(self, id_biblioteca: str) -> str:
-        """
-        Determina el nodo correcto según el ID de biblioteca.
-        
-        Args:
-            id_biblioteca: ID de la biblioteca ('01' o '02').
-        
-        Returns:
-            'FIS' para biblioteca '01', 'FIQA' para biblioteca '02'.
-        """
-        return 'FIS' if id_biblioteca == '01' else 'FIQA'
-    
     def _create_widgets(self):
         """Crea los widgets de la vista."""
         layout = QVBoxLayout(self)
@@ -247,17 +235,9 @@ class UsuariosView(QWidget):
     def load_data(self):
         """Carga los datos de usuarios desde la base de datos distribuida."""
         try:
-            # Consultar usuarios de AMBOS nodos (fragmentación horizontal)
-            # Biblioteca '01' está en FIS, Biblioteca '02' está en FIQA
-            usuarios_fis = self.sp_usuarios.consultar_usuario(node="FIS")
-            usuarios_fiqa = self.sp_usuarios.consultar_usuario(node="FIQA")
-            
-            # Combinar resultados de ambos nodos
-            usuarios = []
-            if usuarios_fis:
-                usuarios.extend(usuarios_fis)
-            if usuarios_fiqa:
-                usuarios.extend(usuarios_fiqa)
+            # Siempre consultar FIS - las vistas con linked servers traen usuarios
+            # de ambas bibliotecas ('01' de FIS y '02' de FIQA) automáticamente
+            usuarios = self.sp_usuarios.consultar_usuario(node="FIS")
             
             if usuarios:
                 self._populate_table(usuarios)
@@ -337,10 +317,8 @@ class UsuariosView(QWidget):
             
             if data:
                 try:
-                    # Determinar el nodo correcto según la biblioteca
-                    node = self._get_node_for_biblioteca(data['id_biblioteca'])
-                    
-                    # Llamar al procedimiento almacenado
+                    # Siempre usar FIS - los procedimientos usan vistas con linked servers
+                    # que manejan la fragmentación automáticamente
                     success = self.sp_usuarios.insertar_usuario(
                         id_biblioteca=data['id_biblioteca'],
                         cedula=data['cedula'],
@@ -348,7 +326,7 @@ class UsuariosView(QWidget):
                         apellido_usuario=data['apellido_usuario'],
                         email_usuario=data['email_usuario'],
                         celular_usuario=data['celular_usuario'],
-                        node=node
+                        node='FIS'
                     )
                     
                     if success:
@@ -403,10 +381,8 @@ class UsuariosView(QWidget):
             
             if data:
                 try:
-                    # Determinar el nodo correcto según la biblioteca
-                    node = self._get_node_for_biblioteca(data['id_biblioteca'])
-                    
-                    # Llamar al procedimiento almacenado
+                    # Siempre usar FIS - los procedimientos usan vistas con linked servers
+                    # que manejan la fragmentación automáticamente
                     success = self.sp_usuarios.actualizar_usuario(
                         id_biblioteca=data['id_biblioteca'],
                         cedula=data['cedula'],
@@ -414,7 +390,7 @@ class UsuariosView(QWidget):
                         apellido_usuario=data['apellido_usuario'],
                         email_usuario=data['email_usuario'],
                         celular_usuario=data['celular_usuario'],
-                        node=node
+                        node='FIS'
                     )
                     
                     if success:
@@ -471,14 +447,12 @@ class UsuariosView(QWidget):
         
         if reply == QMessageBox.Yes:
             try:
-                # Determinar el nodo correcto según la biblioteca
-                node = self._get_node_for_biblioteca(id_biblioteca)
-                
-                # Llamar al procedimiento almacenado
+                # Siempre usar FIS - los procedimientos usan vistas con linked servers
+                # que manejan la fragmentación automáticamente
                 success = self.sp_usuarios.eliminar_usuario(
                     id_biblioteca=id_biblioteca,
                     cedula=cedula,
-                    node=node
+                    node='FIS'
                 )
                 
                 if success:
