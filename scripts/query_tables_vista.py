@@ -12,7 +12,7 @@ load_dotenv()
 dist_conn = DistributedConnection()
 
 # Consultar tabla LIBRO en nodo FIS
-print("=== LIBROS EN NODO FIS ===")
+print("=== LIBROS (tabla replicada) ===")
 try:
     libros = dist_conn.execute_query("FIS", "SELECT * FROM LIBRO")
     for i, libro in enumerate(libros):
