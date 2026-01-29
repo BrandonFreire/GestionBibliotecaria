@@ -27,7 +27,7 @@ class SP_Prestamo:
                          cedula: str,
                          fecha_prestamo: date,
                          fecha_devolucion_tope: date,
-                         node: str = "FIQA") -> bool:
+                         node: str = "FIS") -> bool:
         """
         Inserta un nuevo préstamo en la base de datos.
         
@@ -38,7 +38,7 @@ class SP_Prestamo:
             cedula: Cédula del usuario.
             fecha_prestamo: Fecha en que se realiza el préstamo.
             fecha_devolucion_tope: Fecha tope para devolver el libro.
-            node: Nodo donde ejecutar (por defecto FIQA).
+            node: Nodo donde ejecutar (por defecto FIS).
         
         Returns:
             True si se insertó correctamente, False en caso contrario.
@@ -69,7 +69,7 @@ class SP_Prestamo:
                            cedula: str,
                            fecha_prestamo: date,
                            fecha_devolucion_nueva: date,
-                           node: str = "FIQA") -> bool:
+                           node: str = "FIS") -> bool:
         """
         Actualiza un préstamo registrando la devolución del libro.
         
@@ -80,7 +80,7 @@ class SP_Prestamo:
             cedula: Cédula del usuario.
             fecha_prestamo: Fecha original del préstamo.
             fecha_devolucion_nueva: Fecha real en que se devolvió el libro.
-            node: Nodo donde ejecutar (por defecto FIQA).
+            node: Nodo donde ejecutar (por defecto FIS).
         
         Returns:
             True si se actualizó correctamente, False en caso contrario.
@@ -110,7 +110,7 @@ class SP_Prestamo:
                          id_ejemplar: int,
                          cedula: str,
                          fecha_prestamo: date,
-                         node: str = "FIQA") -> bool:
+                         node: str = "FIS") -> bool:
         """
         Elimina un registro de préstamo de la base de datos.
         
@@ -120,7 +120,7 @@ class SP_Prestamo:
             id_ejemplar: ID del ejemplar.
             cedula: Cédula del usuario.
             fecha_prestamo: Fecha del préstamo.
-            node: Nodo donde ejecutar (por defecto FIQA).
+            node: Nodo donde ejecutar (por defecto FIS).
         
         Returns:
             True si se eliminó correctamente, False en caso contrario.
@@ -144,13 +144,13 @@ class SP_Prestamo:
     
     def consultar_prestamo(self, 
                           id_biblioteca: Optional[str] = None,
-                          node: str = "FIQA") -> List[Dict[str, Any]]:
+                          node: str = "FIS") -> List[Dict[str, Any]]:
         """
         Consulta préstamos de la base de datos.
         
         Args:
             id_biblioteca: ID de la biblioteca (opcional). Si es None, devuelve todos.
-            node: Nodo donde ejecutar (por defecto FIQA).
+            node: Nodo donde ejecutar (por defecto FIS).
         
         Returns:
             Lista de diccionarios con los datos de los préstamos.
@@ -168,12 +168,12 @@ class SP_Prestamo:
             print(f"Error al consultar préstamos: {e}")
             return []
     
-    def consultar_prestamos_activos(self, node: str = "FIQA") -> List[Dict[str, Any]]:
+    def consultar_prestamos_activos(self, node: str = "FIS") -> List[Dict[str, Any]]:
         """
         Consulta préstamos activos (no devueltos).
         
         Args:
-            node: Nodo donde ejecutar (por defecto FIQA).
+            node: Nodo donde ejecutar (por defecto FIS).
         
         Returns:
             Lista de préstamos activos (fecha_devolucion IS NULL).
@@ -185,12 +185,12 @@ class SP_Prestamo:
             print(f"Error al consultar préstamos activos: {e}")
             return []
     
-    def consultar_prestamos_vencidos(self, node: str = "FIQA") -> List[Dict[str, Any]]:
+    def consultar_prestamos_vencidos(self, node: str = "FIS") -> List[Dict[str, Any]]:
         """
         Consulta préstamos vencidos (pasaron la fecha tope y no se devolvieron).
         
         Args:
-            node: Nodo donde ejecutar (por defecto FIQA).
+            node: Nodo donde ejecutar (por defecto FIS).
         
         Returns:
             Lista de préstamos vencidos.

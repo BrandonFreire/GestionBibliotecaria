@@ -18,14 +18,29 @@ from database.s_p_prestamo import SP_Prestamo
 class PrestamosView(QWidget):
     """Vista de historial de préstamos."""
     
-    def __init__(self, db_connection=None):
+    def __init__(self, db_connection=None, current_user=None):
         """
         Inicializa la vista de préstamos.
         
         Args:
             db_connection: Conexión legacy (ignorada, se usa DistributedConnection).
+            current_user: Datos del usuario autenticado para control de acceso.
         """
         super().__init__()
+        
+        # Guardar información del usuario actual
+        self.current_user = current_user or {}
+        self.user_role = self.current_user.get('role', 'usuario')
+        
+        # Determinar biblioteca permitida según rol
+        if self.user_role == 'admin':
+            self.allowed_biblioteca = None  # Todas las bibliotecas
+        elif self.user_role == 'gestor_fis':
+            self.allowed_biblioteca = '01'  # Solo FIS
+        elif self.user_role == 'gestor_fiqa':
+            self.allowed_biblioteca = '02'  # Solo FIQA
+        else:
+            self.allowed_biblioteca = None  # Solo lectura
         
         # Crear conexión distribuida propia
         self.dist_conn = DistributedConnection()
@@ -213,6 +228,10 @@ class PrestamosView(QWidget):
         try:
             # Consultar préstamos desde el nodo FIS (los SP con vistas están en FIS)
             prestamos = self.sp_prestamo.consultar_prestamo(node="FIS")
+            
+            # Filtrar por biblioteca permitida según rol
+            if self.allowed_biblioteca and prestamos:
+                prestamos = [p for p in prestamos if p.get('id_biblioteca') == self.allowed_biblioteca]
             
             if prestamos:
                 self._populate_table(prestamos)

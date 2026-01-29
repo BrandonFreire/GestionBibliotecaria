@@ -18,10 +18,11 @@ from database.s_p_pasillo import SP_Pasillo
 class PasilloDialog(QDialog):
     """Diálogo para agregar/editar pasillo."""
     
-    def __init__(self, parent=None, modo="agregar", pasillo_data=None):
+    def __init__(self, parent=None, modo="agregar", pasillo_data=None, allowed_biblioteca=None):
         super().__init__(parent)
         self.modo = modo
         self.pasillo_data = pasillo_data or {}
+        self.allowed_biblioteca = allowed_biblioteca
         self._setup_ui()
     
     def _setup_ui(self):
@@ -62,7 +63,13 @@ class PasilloDialog(QDialog):
         if self.pasillo_data.get('id_biblioteca'):
             index = 0 if self.pasillo_data['id_biblioteca'] == '01' else 1
             self.biblioteca_combo.setCurrentIndex(index)
-        if self.modo == "editar":
+        
+        # Si hay biblioteca fija (gestor), seleccionarla y deshabilitar
+        if self.allowed_biblioteca:
+            index = 0 if self.allowed_biblioteca == '01' else 1
+            self.biblioteca_combo.setCurrentIndex(index)
+            self.biblioteca_combo.setEnabled(False)
+        elif self.modo == "editar":
             self.biblioteca_combo.setEnabled(False)
         form_layout.addRow("Biblioteca:", self.biblioteca_combo)
         
@@ -146,14 +153,29 @@ class PasilloDialog(QDialog):
 class PasilloView(QWidget):
     """Vista de gestión de pasillos."""
     
-    def __init__(self, db_connection=None):
+    def __init__(self, db_connection=None, current_user=None):
         """
         Inicializa la vista de pasillos.
         
         Args:
             db_connection: Conexión legacy (ignorada, se usa DistributedConnection).
+            current_user: Datos del usuario autenticado para control de acceso.
         """
         super().__init__()
+        
+        # Guardar información del usuario actual
+        self.current_user = current_user or {}
+        self.user_role = self.current_user.get('role', 'usuario')
+        
+        # Determinar biblioteca permitida según rol
+        if self.user_role == 'admin':
+            self.allowed_biblioteca = None  # Todas las bibliotecas
+        elif self.user_role == 'gestor_fis':
+            self.allowed_biblioteca = '01'  # Solo FIS
+        elif self.user_role == 'gestor_fiqa':
+            self.allowed_biblioteca = '02'  # Solo FIQA
+        else:
+            self.allowed_biblioteca = None  # Solo lectura
         
         # Crear conexión distribuida propia
         self.dist_conn = DistributedConnection()
@@ -329,6 +351,10 @@ class PasilloView(QWidget):
             # Consultar pasillos desde el nodo FIS
             pasillos = self.sp_pasillo.consultar_pasillo(node="FIS")
             
+            # Filtrar por biblioteca permitida según rol
+            if self.allowed_biblioteca and pasillos:
+                pasillos = [p for p in pasillos if p.get('id_biblioteca') == self.allowed_biblioteca]
+            
             if pasillos:
                 self._populate_table(pasillos)
             else:
@@ -369,7 +395,7 @@ class PasilloView(QWidget):
     
     def _add_pasillo(self):
         """Abre el diálogo para agregar pasillo."""
-        dialog = PasilloDialog(self, modo="agregar")
+        dialog = PasilloDialog(self, modo="agregar", allowed_biblioteca=self.allowed_biblioteca)
         
         if dialog.exec_() == QDialog.Accepted:
             data = dialog.get_data()
@@ -420,7 +446,7 @@ class PasilloView(QWidget):
             'num_pasillo': self.table.item(current_row, 1).text()
         }
         
-        dialog = PasilloDialog(self, modo="editar", pasillo_data=pasillo_data)
+        dialog = PasilloDialog(self, modo="editar", pasillo_data=pasillo_data, allowed_biblioteca=self.allowed_biblioteca)
         
         if dialog.exec_() == QDialog.Accepted:
             data = dialog.get_data()

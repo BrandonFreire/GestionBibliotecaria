@@ -14,9 +14,31 @@ from config.settings import Settings
 class EjemplaresView(QWidget):
     """Vista de ejemplares de libros."""
     
-    def __init__(self, db_connection=None):
+    def __init__(self, db_connection=None, current_user=None):
+        """
+        Inicializa la vista de ejemplares.
+        
+        Args:
+            db_connection: Conexión a la BD.
+            current_user: Datos del usuario autenticado para control de acceso.
+        """
         super().__init__()
         self.db_connection = db_connection
+        
+        # Guardar información del usuario actual
+        self.current_user = current_user or {}
+        self.user_role = self.current_user.get('role', 'usuario')
+        
+        # Determinar biblioteca permitida según rol
+        if self.user_role == 'admin':
+            self.allowed_biblioteca = None
+        elif self.user_role == 'gestor_fis':
+            self.allowed_biblioteca = '01'
+        elif self.user_role == 'gestor_fiqa':
+            self.allowed_biblioteca = '02'
+        else:
+            self.allowed_biblioteca = None
+        
         self._create_widgets()
         self._load_sample_data()
     

@@ -14,7 +14,7 @@ from config.settings import Settings
 class UsuarioDialog(QDialog):
     """Diálogo para agregar o editar un usuario."""
     
-    def __init__(self, parent=None, modo="agregar", usuario_data=None):
+    def __init__(self, parent=None, modo="agregar", usuario_data=None, allowed_biblioteca=None):
         """
         Inicializa el diálogo.
         
@@ -22,10 +22,12 @@ class UsuarioDialog(QDialog):
             parent: Widget padre.
             modo: "agregar" o "editar".
             usuario_data: Diccionario con datos del usuario (solo para modo editar).
+            allowed_biblioteca: Biblioteca fija para gestores ('01' o '02'). None para admin.
         """
         super().__init__(parent)
         self.modo = modo
         self.usuario_data = usuario_data or {}
+        self.allowed_biblioteca = allowed_biblioteca
         self.result_data = None
         
         self.setWindowTitle("Nuevo Usuario" if modo == "agregar" else "Editar Usuario")
@@ -77,6 +79,13 @@ class UsuarioDialog(QDialog):
                 color: {theme['TEXT_COLOR']};
             }}
         """)
+        
+        # Si hay biblioteca fija (gestor), seleccionarla y deshabilitar el combo
+        if self.allowed_biblioteca:
+            index = 0 if self.allowed_biblioteca == '01' else 1
+            self.biblioteca_combo.setCurrentIndex(index)
+            self.biblioteca_combo.setEnabled(False)
+        
         form_layout.addRow("Biblioteca:", self.biblioteca_combo)
         
         # Cédula

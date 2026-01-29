@@ -170,12 +170,12 @@ class MainWindow(QMainWindow):
         theme = Settings.get_theme()
         self.content_stack.setStyleSheet(f"background-color: {theme['BG_COLOR']};")
         
-        # Crear vistas
-        self.libros_view = LibrosView(self.db_connection)
-        self.usuarios_view = UsuariosView(self.db_connection)
-        self.prestamos_view = PrestamosView(self.db_connection)
-        self.ejemplares_view = EjemplaresView(self.db_connection)
-        self.pasillo_view = PasilloView(self.db_connection)
+        # Crear vistas con información del usuario para control de acceso
+        self.libros_view = LibrosView(self.db_connection, self.current_user)
+        self.usuarios_view = UsuariosView(self.db_connection, self.current_user)
+        self.prestamos_view = PrestamosView(self.db_connection, self.current_user)
+        self.ejemplares_view = EjemplaresView(self.db_connection, self.current_user)
+        self.pasillo_view = PasilloView(self.db_connection, self.current_user)
         
         self.content_stack.addWidget(self.libros_view)
         self.content_stack.addWidget(self.usuarios_view)

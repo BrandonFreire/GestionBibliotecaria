@@ -18,14 +18,29 @@ from gui.dialogs.usuario_dialog import UsuarioDialog
 class UsuariosView(QWidget):
     """Vista de usuarios registrados."""
     
-    def __init__(self, db_connection=None):
+    def __init__(self, db_connection=None, current_user=None):
         """
         Inicializa la vista de usuarios.
         
         Args:
             db_connection: Conexión legacy (ignorada, se usa DistributedConnection).
+            current_user: Datos del usuario autenticado para control de acceso.
         """
         super().__init__()
+        
+        # Guardar información del usuario actual
+        self.current_user = current_user or {}
+        self.user_role = self.current_user.get('role', 'usuario')
+        
+        # Determinar biblioteca permitida según rol
+        if self.user_role == 'admin':
+            self.allowed_biblioteca = None  # Todas las bibliotecas
+        elif self.user_role == 'gestor_fis':
+            self.allowed_biblioteca = '01'  # Solo FIS
+        elif self.user_role == 'gestor_fiqa':
+            self.allowed_biblioteca = '02'  # Solo FIQA
+        else:
+            self.allowed_biblioteca = None  # Solo lectura
         
         # Crear conexión distribuida propia
         self.dist_conn = DistributedConnection()
@@ -239,6 +254,10 @@ class UsuariosView(QWidget):
             # de ambas bibliotecas ('01' de FIS y '02' de FIQA) automáticamente
             usuarios = self.sp_usuarios.consultar_usuario(node="FIS")
             
+            # Filtrar por biblioteca permitida según rol
+            if self.allowed_biblioteca and usuarios:
+                usuarios = [u for u in usuarios if u.get('id_biblioteca') == self.allowed_biblioteca]
+            
             if usuarios:
                 self._populate_table(usuarios)
             else:
@@ -310,7 +329,7 @@ class UsuariosView(QWidget):
     
     def _add_user(self):
         """Abre el diálogo para agregar usuario."""
-        dialog = UsuarioDialog(self, modo="agregar")
+        dialog = UsuarioDialog(self, modo="agregar", allowed_biblioteca=self.allowed_biblioteca)
         
         if dialog.exec_() == QDialog.Accepted:
             data = dialog.get_data()
@@ -374,7 +393,7 @@ class UsuariosView(QWidget):
         }
         
         # Abrir diálogo en modo editar
-        dialog = UsuarioDialog(self, modo="editar", usuario_data=usuario_data)
+        dialog = UsuarioDialog(self, modo="editar", usuario_data=usuario_data, allowed_biblioteca=self.allowed_biblioteca)
         
         if dialog.exec_() == QDialog.Accepted:
             data = dialog.get_data()

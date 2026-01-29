@@ -22,14 +22,22 @@ class LibrosView(QWidget):
     # Señal para solicitar préstamo
     loan_requested = pyqtSignal(dict)
     
-    def __init__(self, db_connection=None):
+    def __init__(self, db_connection=None, current_user=None):
         """
         Inicializa la vista de libros.
         
         Args:
             db_connection: Conexión legacy (ignorada, se usa DistributedConnection).
+            current_user: Datos del usuario autenticado para control de acceso.
         """
         super().__init__()
+        
+        # Guardar información del usuario actual
+        self.current_user = current_user or {}
+        self.user_role = self.current_user.get('role', 'usuario')
+        
+        # Para libros (replicación transaccional), todos los gestores tienen CRUD completo
+        # No hay filtrado por biblioteca
         
         # Crear conexión distribuida propia
         self.dist_conn = DistributedConnection()
