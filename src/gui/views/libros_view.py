@@ -85,8 +85,8 @@ class LibrosView(QWidget):
         header_layout.addWidget(refresh_btn)
         
         # Botón de editar
-        edit_btn = QPushButton("✏️ Editar")
-        edit_btn.setStyleSheet(f"""
+        self.edit_btn = QPushButton("✏️ Editar")
+        self.edit_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: #FFA500;
                 color: white;
@@ -99,13 +99,13 @@ class LibrosView(QWidget):
                 background-color: #FF8C00;
             }}
         """)
-        edit_btn.setCursor(Qt.PointingHandCursor)
-        edit_btn.clicked.connect(self._edit_libro)
-        header_layout.addWidget(edit_btn)
+        self.edit_btn.setCursor(Qt.PointingHandCursor)
+        self.edit_btn.clicked.connect(self._edit_libro)
+        header_layout.addWidget(self.edit_btn)
         
         # Botón de eliminar
-        delete_btn = QPushButton("🗑️ Eliminar")
-        delete_btn.setStyleSheet(f"""
+        self.delete_btn = QPushButton("🗑️ Eliminar")
+        self.delete_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: #DC3545;
                 color: white;
@@ -118,13 +118,13 @@ class LibrosView(QWidget):
                 background-color: #C82333;
             }}
         """)
-        delete_btn.setCursor(Qt.PointingHandCursor)
-        delete_btn.clicked.connect(self._delete_libro)
-        header_layout.addWidget(delete_btn)
+        self.delete_btn.setCursor(Qt.PointingHandCursor)
+        self.delete_btn.clicked.connect(self._delete_libro)
+        header_layout.addWidget(self.delete_btn)
         
         # Botón de nuevo libro
-        new_btn = QPushButton("➕ Nuevo")
-        new_btn.setStyleSheet(f"""
+        self.new_btn = QPushButton("➕ Nuevo")
+        self.new_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Settings.PRIMARY_COLOR};
                 color: white;
@@ -137,9 +137,15 @@ class LibrosView(QWidget):
                 background-color: {Settings.SECONDARY_COLOR};
             }}
         """)
-        new_btn.setCursor(Qt.PointingHandCursor)
-        new_btn.clicked.connect(self._add_libro)
-        header_layout.addWidget(new_btn)
+        self.new_btn.setCursor(Qt.PointingHandCursor)
+        self.new_btn.clicked.connect(self._add_libro)
+        header_layout.addWidget(self.new_btn)
+        
+        # Ocultar botones CRUD si el usuario es gestor_fiqa (solo lectura en libros)
+        if self.user_role == 'gestor_fiqa':
+            self.edit_btn.setVisible(False)
+            self.delete_btn.setVisible(False)
+            self.new_btn.setVisible(False)
         
         # Botón de solicitar préstamo
         self.loan_btn = QPushButton("📖 Solicitar Préstamo")

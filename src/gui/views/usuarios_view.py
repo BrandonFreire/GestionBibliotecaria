@@ -227,6 +227,13 @@ class UsuariosView(QWidget):
         
         self.table.doubleClicked.connect(self._show_user_details)
         
+        # Ocultar columnas sensibles si el usuario es gestor_fiqa
+        # gestor_fiqa solo debe ver: ID Biblioteca, Nombre, Apellido
+        if self.user_role == 'gestor_fiqa':
+            self.table.setColumnHidden(1, True)  # Cédula
+            self.table.setColumnHidden(4, True)  # Email
+            self.table.setColumnHidden(5, True)  # Celular
+        
         layout.addWidget(self.table, 1)
         
         # Estadísticas
