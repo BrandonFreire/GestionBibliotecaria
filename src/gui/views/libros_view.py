@@ -1,15 +1,19 @@
 """
 Vista del catálogo de libros - PyQt5.
+Conectada a la base de datos distribuida.
 """
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QFrame, QTableWidget,
-    QTableWidgetItem, QHeaderView, QComboBox, QMessageBox
+    QTableWidgetItem, QHeaderView, QComboBox, QMessageBox,
+    QDialog, QFormLayout, QSpinBox
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QIcon
 
 from config.settings import Settings
+from database.distributed_connection import DistributedConnection
+from database.s_p_libro import SP_Libro
 
 
 class LibrosView(QWidget):
@@ -19,10 +23,20 @@ class LibrosView(QWidget):
     loan_requested = pyqtSignal(dict)
     
     def __init__(self, db_connection=None):
+        """
+        Inicializa la vista de libros.
+        
+        Args:
+            db_connection: Conexión legacy (ignorada, se usa DistributedConnection).
+        """
         super().__init__()
-        self.db_connection = db_connection
+        
+        # Crear conexión distribuida propia
+        self.dist_conn = DistributedConnection()
+        self.sp_libro = SP_Libro(self.dist_conn)
+        
         self._create_widgets()
-        self._load_sample_data()
+        self.load_data()  # Cargar datos reales de la BD
     
     def _create_widgets(self):
         """Crea los widgets de la vista."""
@@ -42,6 +56,82 @@ class LibrosView(QWidget):
         """)
         header_layout.addWidget(title)
         header_layout.addStretch()
+        
+        # Botón de refrescar
+        refresh_btn = QPushButton("🔄 Refrescar")
+        refresh_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Settings.SECONDARY_COLOR};
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                font-size: 10pt;
+            }}
+            QPushButton:hover {{
+                background-color: {Settings.PRIMARY_COLOR};
+            }}
+        """)
+        refresh_btn.setCursor(Qt.PointingHandCursor)
+        refresh_btn.clicked.connect(self.load_data)
+        header_layout.addWidget(refresh_btn)
+        
+        # Botón de editar
+        edit_btn = QPushButton("✏️ Editar")
+        edit_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: #FFA500;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                font-size: 10pt;
+            }}
+            QPushButton:hover {{
+                background-color: #FF8C00;
+            }}
+        """)
+        edit_btn.setCursor(Qt.PointingHandCursor)
+        edit_btn.clicked.connect(self._edit_libro)
+        header_layout.addWidget(edit_btn)
+        
+        # Botón de eliminar
+        delete_btn = QPushButton("🗑️ Eliminar")
+        delete_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: #DC3545;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                font-size: 10pt;
+            }}
+            QPushButton:hover {{
+                background-color: #C82333;
+            }}
+        """)
+        delete_btn.setCursor(Qt.PointingHandCursor)
+        delete_btn.clicked.connect(self._delete_libro)
+        header_layout.addWidget(delete_btn)
+        
+        # Botón de nuevo libro
+        new_btn = QPushButton("➕ Nuevo")
+        new_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Settings.PRIMARY_COLOR};
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                font-size: 10pt;
+            }}
+            QPushButton:hover {{
+                background-color: {Settings.SECONDARY_COLOR};
+            }}
+        """)
+        new_btn.setCursor(Qt.PointingHandCursor)
+        new_btn.clicked.connect(self._add_libro)
+        header_layout.addWidget(new_btn)
         
         # Botón de solicitar préstamo
         self.loan_btn = QPushButton("📖 Solicitar Préstamo")
@@ -195,43 +285,47 @@ class LibrosView(QWidget):
         
         layout.addWidget(stats_frame)
     
-    def _load_sample_data(self):
-        """Carga datos de ejemplo."""
-        # Estructura: (ISBN, Nombre, Año de edición, Categoría, Lugar de impresión)
-        sample_books = [
-            # Ciencias de la Computación
-            ("978-0262033848", "Introduction to Algorithms", 2009, "Computación", "Cambridge, USA"),
-            ("978-0201633610", "Design Patterns", 1994, "Software", "Boston, USA"),
-            ("978-0132350884", "Clean Code", 2008, "Software", "New Jersey, USA"),
-            ("978-0596007126", "Head First Design Patterns", 2004, "Software", "Sebastopol, USA"),
-            ("978-0201485677", "The Pragmatic Programmer", 1999, "Software", "Boston, USA"),
-            ("978-0596517748", "JavaScript: The Good Parts", 2008, "Software", "Sebastopol, USA"),
-            ("978-1491950357", "Python Crash Course", 2015, "Computación", "San Francisco, USA"),
-            ("978-0134685991", "Effective Java", 2017, "Software", "Boston, USA"),
-            # Química
-            ("978-6071509284", "Química General", 2014, "Química", "Ciudad de México, México"),
-            ("978-0321910417", "Química Orgánica", 2017, "Química", "New York, USA"),
-            ("978-8429175233", "Química Inorgánica", 2010, "Química", "Barcelona, España"),
-            ("978-9702615149", "Fundamentos de Química", 2013, "Química", "Ciudad de México, México"),
-            ("978-0073511092", "Química: La Ciencia Central", 2018, "Química", "New York, USA"),
-            # Más Computación
-            ("978-0596009205", "Learning Python", 2007, "Computación", "Sebastopol, USA"),
-            ("978-1449355739", "Learning SQL", 2020, "Computación", "Sebastopol, USA"),
-            ("978-0134757599", "Refactoring", 2018, "Software", "Boston, USA"),
-        ]
-        
-        self._populate_table(sample_books)
+    def load_data(self):
+        """Carga los datos de libros desde la base de datos distribuida."""
+        try:
+            # Consultar libros desde el nodo FIS (publicador en replicación)
+            libros = self.sp_libro.consultar_libro(node="FIS")
+            
+            if libros:
+                self._populate_table(libros)
+            else:
+                self.table.setRowCount(0)
+                self._update_stats()
+                
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error al cargar libros: {str(e)}"
+            )
     
-    def _populate_table(self, books):
-        """Llena la tabla con los libros."""
-        self.table.setRowCount(len(books))
+    def _populate_table(self, libros):
+        """Llena la tabla con los libros desde la BD."""
+        self.table.setSortingEnabled(False)
         
-        for row, book in enumerate(books):
-            for col, value in enumerate(book):
+        self.table.setRowCount(len(libros))
+        
+        for row, libro in enumerate(libros):
+            # Columnas: ISBN, Nombre, Año de edición, Categoría, Lugar de impresión
+            columns = [
+                libro.get('ISBN', ''),
+                libro.get('nombre_libro', ''),
+                libro.get('anio_edicion', ''),
+                libro.get('categoria_libro', ''),
+                libro.get('lugar_impresion_libro', '')
+            ]
+            
+            for col, value in enumerate(columns):
                 item = QTableWidgetItem(str(value))
                 item.setTextAlignment(Qt.AlignCenter if col in [0, 2] else Qt.AlignLeft | Qt.AlignVCenter)
                 self.table.setItem(row, col, item)
         
+        self.table.setSortingEnabled(True)
         self._update_stats()
     
     def _update_stats(self):
@@ -310,3 +404,297 @@ class LibrosView(QWidget):
         """
         
         QMessageBox.information(self, "Detalles del Libro", book_info)
+    
+    def _add_libro(self):
+        """Abre el diálogo para agregar un nuevo libro."""
+        dialog = LibroDialog(self, modo="agregar")
+        
+        if dialog.exec_() == QDialog.Accepted:
+            data = dialog.get_data()
+            
+            if data:
+                try:
+                    success = self.sp_libro.insertar_libro(
+                        ISBN=data['ISBN'],
+                        nombre_libro=data['nombre_libro'],
+                        anio_edicion=data['anio_edicion'],
+                        categoria_libro=data['categoria_libro'],
+                        lugar_impresion_libro=data['lugar_impresion_libro'],
+                        node='FIS'
+                    )
+                    
+                    if success:
+                        QMessageBox.information(
+                            self,
+                            "Éxito",
+                            f"Libro '{data['nombre_libro']}' agregado correctamente."
+                        )
+                        self.load_data()
+                    else:
+                        QMessageBox.warning(
+                            self,
+                            "Advertencia",
+                            "No se pudo agregar el libro. Verifique que el ISBN no exista."
+                        )
+                        
+                except Exception as e:
+                    QMessageBox.critical(
+                        self,
+                        "Error",
+                        f"Error al agregar libro: {str(e)}"
+                    )
+    
+    def _edit_libro(self):
+        """Abre el diálogo para editar el libro seleccionado."""
+        current_row = self.table.currentRow()
+        
+        if current_row < 0:
+            QMessageBox.warning(
+                self,
+                "Selección Requerida",
+                "Por favor seleccione un libro para editar."
+            )
+            return
+        
+        libro_data = {
+            'ISBN': self.table.item(current_row, 0).text(),
+            'nombre_libro': self.table.item(current_row, 1).text(),
+            'anio_edicion': self.table.item(current_row, 2).text(),
+            'categoria_libro': self.table.item(current_row, 3).text(),
+            'lugar_impresion_libro': self.table.item(current_row, 4).text()
+        }
+        
+        dialog = LibroDialog(self, modo="editar", libro_data=libro_data)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            data = dialog.get_data()
+            
+            if data:
+                try:
+                    success = self.sp_libro.actualizar_libro(
+                        ISBN=data['ISBN'],
+                        nombre_libro=data['nombre_libro'],
+                        anio_edicion=data['anio_edicion'],
+                        categoria_libro=data['categoria_libro'],
+                        lugar_impresion_libro=data['lugar_impresion_libro'],
+                        node='FIS'
+                    )
+                    
+                    if success:
+                        QMessageBox.information(
+                            self,
+                            "Éxito",
+                            f"Libro actualizado correctamente."
+                        )
+                        self.load_data()
+                    else:
+                        QMessageBox.warning(
+                            self,
+                            "Advertencia",
+                            "No se pudo actualizar el libro."
+                        )
+                        
+                except Exception as e:
+                    QMessageBox.critical(
+                        self,
+                        "Error",
+                        f"Error al actualizar libro: {str(e)}"
+                    )
+    
+    def _delete_libro(self):
+        """Elimina el libro seleccionado."""
+        current_row = self.table.currentRow()
+        
+        if current_row < 0:
+            QMessageBox.warning(
+                self,
+                "Selección Requerida",
+                "Por favor seleccione un libro para eliminar."
+            )
+            return
+        
+        isbn = self.table.item(current_row, 0).text()
+        nombre = self.table.item(current_row, 1).text()
+        
+        reply = QMessageBox.question(
+            self,
+            "Confirmar Eliminación",
+            f"¿Está seguro de eliminar el libro?\n\n"
+            f"ISBN: {isbn}\n"
+            f"Nombre: {nombre}\n\n"
+            f"Esta acción no se puede deshacer.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            try:
+                success = self.sp_libro.eliminar_libro(
+                    ISBN=isbn,
+                    node='FIS'
+                )
+                
+                if success:
+                    QMessageBox.information(
+                        self,
+                        "Éxito",
+                        f"Libro '{nombre}' eliminado correctamente."
+                    )
+                    self.load_data()
+                else:
+                    QMessageBox.warning(
+                        self,
+                        "Advertencia",
+                        "No se pudo eliminar el libro. Puede tener ejemplares o préstamos asociados."
+                    )
+                    
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Error al eliminar libro: {str(e)}"
+                )
+
+
+class LibroDialog(QDialog):
+    """Diálogo para agregar/editar libro."""
+    
+    def __init__(self, parent=None, modo="agregar", libro_data=None):
+        super().__init__(parent)
+        self.modo = modo
+        self.libro_data = libro_data or {}
+        self._setup_ui()
+    
+    def _setup_ui(self):
+        """Configura la interfaz del diálogo."""
+        self.setWindowTitle("Agregar Libro" if self.modo == "agregar" else "Editar Libro")
+        self.setMinimumWidth(450)
+        
+        theme = Settings.get_theme()
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {theme['CARD_BG']};
+            }}
+            QLabel {{
+                color: {theme['TEXT_COLOR']};
+                font-size: 11pt;
+            }}
+            QLineEdit, QSpinBox {{
+                padding: 8px;
+                border: 1px solid {theme['BORDER_COLOR']};
+                border-radius: 4px;
+                background-color: {theme['CARD_BG']};
+                color: {theme['TEXT_COLOR']};
+                font-size: 11pt;
+            }}
+        """)
+        
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Formulario
+        form_layout = QFormLayout()
+        form_layout.setSpacing(10)
+        
+        # ISBN
+        self.isbn_input = QLineEdit()
+        self.isbn_input.setPlaceholderText("Ej: 978-0132350884")
+        if self.libro_data.get('ISBN'):
+            self.isbn_input.setText(self.libro_data['ISBN'])
+        if self.modo == "editar":
+            self.isbn_input.setEnabled(False)
+        form_layout.addRow("ISBN:", self.isbn_input)
+        
+        # Nombre del libro
+        self.nombre_input = QLineEdit()
+        self.nombre_input.setPlaceholderText("Nombre del libro")
+        if self.libro_data.get('nombre_libro'):
+            self.nombre_input.setText(self.libro_data['nombre_libro'])
+        form_layout.addRow("Nombre:", self.nombre_input)
+        
+        # Año de edición
+        self.anio_spin = QSpinBox()
+        self.anio_spin.setMinimum(1900)
+        self.anio_spin.setMaximum(2100)
+        self.anio_spin.setValue(2024)
+        if self.libro_data.get('anio_edicion'):
+            self.anio_spin.setValue(int(self.libro_data['anio_edicion']))
+        form_layout.addRow("Año de Edición:", self.anio_spin)
+        
+        # Categoría
+        self.categoria_input = QLineEdit()
+        self.categoria_input.setPlaceholderText("Ej: Computación, Software, Química")
+        if self.libro_data.get('categoria_libro'):
+            self.categoria_input.setText(self.libro_data['categoria_libro'])
+        form_layout.addRow("Categoría:", self.categoria_input)
+        
+        # Lugar de impresión
+        self.lugar_input = QLineEdit()
+        self.lugar_input.setPlaceholderText("Ej: New York, USA")
+        if self.libro_data.get('lugar_impresion_libro'):
+            self.lugar_input.setText(self.libro_data['lugar_impresion_libro'])
+        form_layout.addRow("Lugar de Impresión:", self.lugar_input)
+        
+        layout.addLayout(form_layout)
+        
+        # Botones
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        
+        cancel_btn = QPushButton("Cancelar")
+        cancel_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                padding: 10px 25px;
+                border-radius: 4px;
+                font-size: 10pt;
+            }}
+            QPushButton:hover {{
+                background-color: #5a6268;
+            }}
+        """)
+        cancel_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(cancel_btn)
+        
+        save_btn = QPushButton("Guardar")
+        save_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Settings.PRIMARY_COLOR};
+                color: white;
+                border: none;
+                padding: 10px 25px;
+                border-radius: 4px;
+                font-size: 10pt;
+            }}
+            QPushButton:hover {{
+                background-color: {Settings.SECONDARY_COLOR};
+            }}
+        """)
+        save_btn.clicked.connect(self._validate_and_accept)
+        btn_layout.addWidget(save_btn)
+        
+        layout.addLayout(btn_layout)
+    
+    def _validate_and_accept(self):
+        """Valida los datos antes de aceptar."""
+        if not self.isbn_input.text().strip():
+            QMessageBox.warning(self, "Validación", "El ISBN es requerido.")
+            return
+        if not self.nombre_input.text().strip():
+            QMessageBox.warning(self, "Validación", "El nombre del libro es requerido.")
+            return
+        self.accept()
+    
+    def get_data(self):
+        """Retorna los datos del formulario."""
+        return {
+            'ISBN': self.isbn_input.text().strip(),
+            'nombre_libro': self.nombre_input.text().strip(),
+            'anio_edicion': self.anio_spin.value(),
+            'categoria_libro': self.categoria_input.text().strip(),
+            'lugar_impresion_libro': self.lugar_input.text().strip()
+        }
+
