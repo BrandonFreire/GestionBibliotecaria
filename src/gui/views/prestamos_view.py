@@ -1,6 +1,8 @@
 """
 Vista de historial de préstamos - PyQt5.
+Conectada a la base de datos distribuida.
 """
+from datetime import date
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QFrame, QTableWidget,
@@ -9,16 +11,28 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 
 from config.settings import Settings
+from database.distributed_connection import DistributedConnection
+from database.s_p_prestamo import SP_Prestamo
 
 
 class PrestamosView(QWidget):
     """Vista de historial de préstamos."""
     
     def __init__(self, db_connection=None):
+        """
+        Inicializa la vista de préstamos.
+        
+        Args:
+            db_connection: Conexión legacy (ignorada, se usa DistributedConnection).
+        """
         super().__init__()
-        self.db_connection = db_connection
+        
+        # Crear conexión distribuida propia
+        self.dist_conn = DistributedConnection()
+        self.sp_prestamo = SP_Prestamo(self.dist_conn)
+        
         self._create_widgets()
-        self._load_sample_data()
+        self.load_data()  # Cargar datos reales de la BD
     
     def _create_widgets(self):
         """Crea los widgets de la vista."""
@@ -38,6 +52,25 @@ class PrestamosView(QWidget):
         """)
         header_layout.addWidget(title)
         header_layout.addStretch()
+        
+        # Botón de refrescar
+        refresh_btn = QPushButton("🔄 Refrescar")
+        refresh_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Settings.SECONDARY_COLOR};
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                font-size: 10pt;
+            }}
+            QPushButton:hover {{
+                background-color: {Settings.PRIMARY_COLOR};
+            }}
+        """)
+        refresh_btn.setCursor(Qt.PointingHandCursor)
+        refresh_btn.clicked.connect(self.load_data)
+        header_layout.addWidget(refresh_btn)
         
         # Botón de registrar devolución
         self.return_btn = QPushButton("↩️ Registrar Devolución")
@@ -98,9 +131,9 @@ class PrestamosView(QWidget):
         
         # Tabla de préstamos
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
-            "ISBN", "Número Ejemplar", "Cédula Solicitante", "Fecha Préstamo", "Fecha Devolución", "Fecha Devolución Máxima"
+            "ID Biblioteca", "ISBN", "ID Ejemplar", "Cédula", "Fecha Préstamo", "Fecha Devolución", "Fecha Dev. Máx."
         ])
         
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -116,6 +149,7 @@ class PrestamosView(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
         
         self.table.setStyleSheet(f"""
             QTableWidget {{
@@ -174,37 +208,63 @@ class PrestamosView(QWidget):
         
         layout.addWidget(stats_frame)
     
-    def _load_sample_data(self):
-        """Carga datos de ejemplo."""
-        # Campos: ISBN, Número Ejemplar, Cédula Solicitante, Fecha Préstamo, Fecha Devolución, Fecha Devolución Máxima
-        sample_loans = [
-            ("978-0307474728", "1", "1102345678", "2026-01-10", "-", "2026-01-24"),
-            ("978-0156012195", "2", "1103456789", "2026-01-05", "-", "2026-01-19"),
-            ("978-0451524935", "1", "1104567890", "2026-01-15", "-", "2026-01-29"),
-            ("978-0553380163", "1", "1105678901", "2025-12-20", "2026-01-02", "2026-01-03"),
-            ("978-1599869773", "3", "1106789012", "2025-12-15", "2025-12-28", "2025-12-29"),
-            ("978-0062316097", "1", "1107890123", "2026-01-12", "-", "2026-01-26"),
-        ]
-        
-        self._populate_table(sample_loans)
+    def load_data(self):
+        """Carga los datos de préstamos desde la base de datos distribuida."""
+        try:
+            # Consultar préstamos desde el nodo FIS (los SP con vistas están en FIS)
+            prestamos = self.sp_prestamo.consultar_prestamo(node="FIS")
+            
+            if prestamos:
+                self._populate_table(prestamos)
+            else:
+                self.table.setRowCount(0)
+                self._update_stats()
+                
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error al cargar préstamos: {str(e)}"
+            )
     
-    def _populate_table(self, loans):
-        """Llena la tabla con los préstamos."""
-        self.table.setRowCount(len(loans))
+    def _populate_table(self, prestamos):
+        """Llena la tabla con los préstamos desde la BD."""
+        # Deshabilitar sorting temporalmente para evitar problemas
+        self.table.setSortingEnabled(False)
         
-        for row, loan in enumerate(loans):
-            for col, value in enumerate(loan):
+        self.table.setRowCount(len(prestamos))
+        
+        for row, prestamo in enumerate(prestamos):
+            # Columnas: ID Biblioteca, ISBN, ID Ejemplar, Cédula, Fecha Préstamo, Fecha Devolución, Fecha Dev. Máx.
+            fecha_devolucion = prestamo.get('fecha_devolucion', None)
+            fecha_devolucion_str = str(fecha_devolucion) if fecha_devolucion else "-"
+            
+            columns = [
+                prestamo.get('id_biblioteca', ''),
+                prestamo.get('ISBN', ''),
+                prestamo.get('id_ejemplar', ''),
+                prestamo.get('cedula', ''),
+                str(prestamo.get('fecha_prestamo', '')),
+                fecha_devolucion_str,
+                str(prestamo.get('fecha_devolucion_tope', ''))
+            ]
+            
+            for col, value in enumerate(columns):
                 item = QTableWidgetItem(str(value))
                 item.setTextAlignment(Qt.AlignCenter)
                 
-                # Colorear fecha devolución (pendiente = rojo claro, devuelto = verde)
-                if col == 4:  # Fecha Devolución
-                    if value == "-":
+                # Colorear fecha devolución (pendiente = amarillo, devuelto = verde)
+                if col == 5:  # Fecha Devolución
+                    if value == "-" or value == "None":
                         item.setForeground(Qt.darkYellow)
+                        item.setText("-")
                     else:
                         item.setForeground(Qt.darkGreen)
                 
                 self.table.setItem(row, col, item)
+        
+        # Rehabilitar sorting
+        self.table.setSortingEnabled(True)
         
         self._update_stats()
     
@@ -215,7 +275,7 @@ class PrestamosView(QWidget):
         returned = 0
         
         for row in range(total):
-            item = self.table.item(row, 4)  # Columna Fecha Devolución
+            item = self.table.item(row, 5)  # Columna Fecha Devolución (índice 5)
             if item:
                 if item.text() == "-":
                     pending += 1
@@ -235,7 +295,7 @@ class PrestamosView(QWidget):
             
             if search_text:
                 match = False
-                for col in [0, 2]:  # ISBN, Cédula Solicitante
+                for col in [1, 3]:  # ISBN (índice 1), Cédula (índice 3)
                     item = self.table.item(row, col)
                     if item and search_text in item.text().lower():
                         match = True
@@ -250,7 +310,7 @@ class PrestamosView(QWidget):
         if selected:
             row = selected[0].row()
             # Habilitar devolución si no tiene fecha de devolución
-            return_date_item = self.table.item(row, 4)
+            return_date_item = self.table.item(row, 5)  # Fecha Devolución (índice 5)
             self.return_btn.setEnabled(
                 return_date_item and return_date_item.text() == "-"
             )
@@ -262,26 +322,59 @@ class PrestamosView(QWidget):
         selected = self.table.selectedItems()
         if selected:
             row = selected[0].row()
-            isbn = self.table.item(row, 0).text()
-            cedula = self.table.item(row, 2).text()
+            
+            # Obtener datos de la fila seleccionada
+            id_biblioteca = self.table.item(row, 0).text()
+            isbn = self.table.item(row, 1).text()
+            id_ejemplar = int(self.table.item(row, 2).text())
+            cedula = self.table.item(row, 3).text()
+            fecha_prestamo_str = self.table.item(row, 4).text()
             
             reply = QMessageBox.question(
                 self,
                 "Confirmar Devolución",
-                f"¿Registrar devolución del préstamo?\n\nISBN: {isbn}\nCédula: {cedula}",
+                f"¿Registrar devolución del préstamo?\n\n"
+                f"ISBN: {isbn}\n"
+                f"Cédula: {cedula}\n"
+                f"Fecha Préstamo: {fecha_prestamo_str}",
                 QMessageBox.Yes | QMessageBox.No
             )
             
             if reply == QMessageBox.Yes:
-                # Actualizar tabla - establecer fecha de devolución actual
-                return_item = self.table.item(row, 4)
-                return_item.setText("2026-01-19")
-                return_item.setForeground(Qt.darkGreen)
-                self._update_stats()
-                self.return_btn.setEnabled(False)
-                
-                QMessageBox.information(
-                    self,
-                    "Devolución Registrada",
-                    f"Se ha registrado la devolución del préstamo.\nISBN: {isbn}"
-                )
+                try:
+                    # Convertir fecha_prestamo string a date
+                    from datetime import datetime
+                    fecha_prestamo = datetime.strptime(fecha_prestamo_str.split()[0], '%Y-%m-%d').date()
+                    fecha_devolucion = date.today()
+                    
+                    # Llamar al procedimiento almacenado
+                    success = self.sp_prestamo.actualizar_prestamo(
+                        id_biblioteca=id_biblioteca,
+                        ISBN=isbn,
+                        id_ejemplar=id_ejemplar,
+                        cedula=cedula,
+                        fecha_prestamo=fecha_prestamo,
+                        fecha_devolucion_nueva=fecha_devolucion,
+                        node='FIS'
+                    )
+                    
+                    if success:
+                        QMessageBox.information(
+                            self,
+                            "Devolución Registrada",
+                            f"Se ha registrado la devolución del préstamo.\nISBN: {isbn}"
+                        )
+                        self.load_data()  # Recargar tabla
+                    else:
+                        QMessageBox.warning(
+                            self,
+                            "Advertencia",
+                            "No se pudo registrar la devolución."
+                        )
+                        
+                except Exception as e:
+                    QMessageBox.critical(
+                        self,
+                        "Error",
+                        f"Error al registrar devolución: {str(e)}"
+                    )
