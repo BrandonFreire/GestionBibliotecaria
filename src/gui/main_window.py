@@ -16,6 +16,7 @@ from gui.views.libros_view import LibrosView
 from gui.views.usuarios_view import UsuariosView
 from gui.views.prestamos_view import PrestamosView
 from gui.views.ejemplares_view import EjemplaresView
+from gui.views.pasillo_view import PasilloView
 
 
 class MainWindow(QMainWindow):
@@ -174,11 +175,13 @@ class MainWindow(QMainWindow):
         self.usuarios_view = UsuariosView(self.db_connection)
         self.prestamos_view = PrestamosView(self.db_connection)
         self.ejemplares_view = EjemplaresView(self.db_connection)
+        self.pasillo_view = PasilloView(self.db_connection)
         
         self.content_stack.addWidget(self.libros_view)
         self.content_stack.addWidget(self.usuarios_view)
         self.content_stack.addWidget(self.prestamos_view)
         self.content_stack.addWidget(self.ejemplares_view)
+        self.content_stack.addWidget(self.pasillo_view)
         
         main_layout.addWidget(self.content_stack, 1)
         
@@ -257,6 +260,7 @@ class MainWindow(QMainWindow):
         self.nav_buttons.append(self._create_nav_button(nav_layout, "👥 Usuarios", self._show_users))
         self.nav_buttons.append(self._create_nav_button(nav_layout, "📋 Préstamos", self._show_loans))
         self.nav_buttons.append(self._create_nav_button(nav_layout, "📦 Ejemplares", self._show_copies))
+        self.nav_buttons.append(self._create_nav_button(nav_layout, "🚪 Pasillos", self._show_pasillos))
         
         nav_layout.addStretch()
         
@@ -385,6 +389,12 @@ class MainWindow(QMainWindow):
         self.content_stack.setCurrentWidget(self.ejemplares_view)
         self._update_nav_buttons(3)
         self._update_status("Ejemplares de Libros")
+    
+    def _show_pasillos(self):
+        """Muestra la vista de pasillos."""
+        self.content_stack.setCurrentWidget(self.pasillo_view)
+        self._update_nav_buttons(4)
+        self._update_status("Gestión de Pasillos")
     
     def _connect_database(self):
         """Conecta a la base de datos."""

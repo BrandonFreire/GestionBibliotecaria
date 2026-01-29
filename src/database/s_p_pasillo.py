@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional
 from .distributed_connection import DistributedConnection
 
 
-class StoredProcedures:
+class SP_Pasillo:
     """Gestiona llamadas a procedimientos almacenados en la base de datos distribuida."""
     
     def __init__(self, dist_conn: DistributedConnection):
