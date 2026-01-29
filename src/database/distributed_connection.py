@@ -126,6 +126,29 @@ class DistributedConnection:
         
         return connection.execute_non_query(query, params)
     
+    def execute_stored_procedure(self, node_name: str, query: str, params: tuple = ()) -> int:
+        """
+        Ejecuta un stored procedure sin commit automático.
+        Permite que el SP maneje sus propias transacciones.
+        
+        Args:
+            node_name: Nombre del nodo donde ejecutar el SP.
+            query: Query del stored procedure a ejecutar.
+            params: Parámetros para el SP.
+        
+        Returns:
+            Número de filas afectadas.
+        """
+        connection = self.get_connection(node_name)
+        if not connection:
+            raise ValueError(f"Nodo '{node_name}' no encontrado")
+        
+        if not connection.is_connected():
+            if not connection.connect():
+                raise ConnectionError(f"No se pudo conectar al nodo '{node_name}'")
+        
+        return connection.execute_stored_procedure(query, params)
+    
     def test_all_connections(self) -> Dict[str, tuple[bool, str]]:
         """
         Prueba la conexión a todos los nodos.

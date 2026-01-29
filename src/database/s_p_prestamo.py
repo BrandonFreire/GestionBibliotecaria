@@ -93,7 +93,7 @@ class SP_Prestamo:
                    @fecha_prestamo=?, 
                    @fecha_devolucion_nueva=?"""
         try:
-            self.dist_conn.execute_non_query(
+            self.dist_conn.execute_stored_procedure(
                 node, query,
                 (id_biblioteca, ISBN, id_ejemplar, cedula, 
                  fecha_prestamo, fecha_devolucion_nueva)

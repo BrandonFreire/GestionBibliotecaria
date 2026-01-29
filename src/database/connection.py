@@ -99,6 +99,24 @@ class DatabaseConnection:
             self._connection.commit()
             return cursor.rowcount
     
+    def execute_stored_procedure(self, query: str, params: tuple = ()) -> int:
+        """
+        Ejecuta un stored procedure sin transacciones explícitas de Python.
+        El SP maneja sus propias transacciones en SQL Server.
+        
+        Args:
+            query: Query del stored procedure a ejecutar.
+            params: Parámetros para el SP.
+        
+        Returns:
+            Número de filas afectadas.
+        """
+        with self.get_cursor() as cursor:
+            cursor.execute(query, params)
+            # Hacer commit después de ejecutar el SP
+            self._connection.commit()
+            return cursor.rowcount
+    
     def execute_scalar(self, query: str, params: tuple = ()) -> Any:
         """
         Ejecuta una consulta y devuelve un único valor.

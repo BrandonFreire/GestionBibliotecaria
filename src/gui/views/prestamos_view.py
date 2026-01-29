@@ -366,7 +366,10 @@ class PrestamosView(QWidget):
                     fecha_prestamo = datetime.strptime(fecha_prestamo_str.split()[0], '%Y-%m-%d').date()
                     fecha_devolucion = date.today()
                     
-                    # Llamar al procedimiento almacenado
+                    # Determinar el nodo según el id_biblioteca
+                    node = 'FIS' if id_biblioteca == '01' else 'FIQA'
+                    
+                    # Llamar al procedimiento almacenado en el nodo correspondiente
                     success = self.sp_prestamo.actualizar_prestamo(
                         id_biblioteca=id_biblioteca,
                         ISBN=isbn,
@@ -374,7 +377,7 @@ class PrestamosView(QWidget):
                         cedula=cedula,
                         fecha_prestamo=fecha_prestamo,
                         fecha_devolucion_nueva=fecha_devolucion,
-                        node='FIS'
+                        node=node
                     )
                     
                     if success:

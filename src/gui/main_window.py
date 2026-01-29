@@ -177,6 +177,9 @@ class MainWindow(QMainWindow):
         self.ejemplares_view = EjemplaresView(self.db_connection, self.current_user)
         self.pasillo_view = PasilloView(self.db_connection, self.current_user)
         
+        # Conectar señal de préstamo
+        self.libros_view.loan_requested.connect(self._on_loan_requested)
+        
         self.content_stack.addWidget(self.libros_view)
         self.content_stack.addWidget(self.usuarios_view)
         self.content_stack.addWidget(self.prestamos_view)
@@ -445,3 +448,97 @@ class MainWindow(QMainWindow):
             f"<p>Aplicación para gestión de préstamos,<br>"
             f"usuarios y catálogo de libros.</p>"
         )
+    
+    def _on_loan_requested(self, book_data: dict):
+        """Procesa una solicitud de préstamo."""
+        from database.s_p_prestamo import SP_Prestamo
+        from database.distributed_connection import DistributedConnection
+        from datetime import date, timedelta
+        
+        try:
+            # Crear instancia de SP_Prestamo
+            dist_conn = DistributedConnection()
+            sp_prestamo = SP_Prestamo(dist_conn)
+            
+            # Obtener datos del usuario actual
+            user_node = self.current_user.get('node', 'FIS')
+            
+            # Convertir node a id_biblioteca
+            user_biblioteca = '01' if user_node == 'FIS' else '02'
+            
+            # Para ahora usar cédula por defecto (puede mejorarse con selección)
+            user_cedula = '1700000002'
+            
+            # Parámetros del préstamo
+            isbn = book_data.get('isbn', '')
+            titulo = book_data.get('title', '')
+            fecha_prestamo = date.today()
+            # Préstamo a 7 días
+            fecha_devolucion_tope = fecha_prestamo + timedelta(days=7)
+            
+            # Obtener un ejemplar válido disponible para este ISBN
+            try:
+                query = f"SELECT TOP 1 id_ejemplar FROM Ejemplar_{user_biblioteca} WHERE ISBN = ?"
+                conexion = dist_conn.get_connection(user_node)
+                if not conexion.is_connected():
+                    conexion.connect()
+                
+                with conexion.get_cursor() as cursor:
+                    cursor.execute(query, (isbn,))
+                    resultado = cursor.fetchone()
+                    
+                    if resultado:
+                        id_ejemplar = resultado[0]
+                    else:
+                        QMessageBox.warning(
+                            self,
+                            "Error",
+                            f"No hay ejemplares disponibles para el ISBN: {isbn}"
+                        )
+                        return
+            except Exception as e:
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    f"Error al obtener ejemplares: {str(e)}"
+                )
+                return
+            
+            # Determinar el nodo según el usuario
+            node = user_node
+            
+            # Insertar el préstamo
+            success = sp_prestamo.insertar_prestamo(
+                id_biblioteca=user_biblioteca,
+                ISBN=isbn,
+                id_ejemplar=id_ejemplar,
+                cedula=user_cedula,
+                fecha_prestamo=fecha_prestamo,
+                fecha_devolucion_tope=fecha_devolucion_tope,
+                node=node
+            )
+            
+            if success:
+                QMessageBox.information(
+                    self,
+                    "Préstamo Registrado",
+                    f"✓ Préstamo registrado correctamente.\n\n"
+                    f"Libro: {titulo}\n"
+                    f"Ejemplar ID: {id_ejemplar}\n"
+                    f"Fecha de devolución: {fecha_devolucion_tope.strftime('%Y-%m-%d')}"
+                )
+                # Recargar la vista de préstamos
+                self.prestamos_view.load_data()
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    f"No se pudo registrar el préstamo del libro:\n{titulo}"
+                )
+        
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error al registrar préstamo: {str(e)}"
+            )
