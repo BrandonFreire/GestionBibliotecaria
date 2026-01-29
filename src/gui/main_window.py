@@ -16,6 +16,7 @@ from gui.views.libros_view import LibrosView
 from gui.views.usuarios_view import UsuariosView
 from gui.views.prestamos_view import PrestamosView
 from gui.views.ejemplares_view import EjemplaresView
+from gui.views.pasillo_view import PasilloView
 
 
 class MainWindow(QMainWindow):
@@ -49,12 +50,13 @@ class MainWindow(QMainWindow):
     
     def _apply_styles(self):
         """Aplica los estilos CSS de la aplicación."""
+        theme = Settings.get_theme()
         self.setStyleSheet(f"""
             QMainWindow {{
-                background-color: {Settings.BACKGROUND_COLOR};
+                background-color: {theme['BG_COLOR']};
             }}
             QLabel {{
-                color: {Settings.TEXT_COLOR};
+                color: {theme['TEXT_COLOR']};
                 font-family: {Settings.FONT_FAMILY};
                 font-size: {Settings.FONT_SIZE_NORMAL}pt;
             }}
@@ -64,14 +66,14 @@ class MainWindow(QMainWindow):
             }}
             QPushButton#nav_button {{
                 background-color: transparent;
-                color: {Settings.TEXT_COLOR};
+                color: {theme['TEXT_COLOR']};
                 text-align: left;
                 padding: 12px 15px;
                 border-radius: 4px;
                 font-size: 11pt;
             }}
             QPushButton#nav_button:hover {{
-                background-color: #E3F2FD;
+                background-color: {theme['NAV_HOVER']};
             }}
             QPushButton#nav_button_active {{
                 background-color: {Settings.PRIMARY_COLOR};
@@ -82,15 +84,31 @@ class MainWindow(QMainWindow):
                 font-size: 11pt;
             }}
             QFrame#nav_frame {{
-                background-color: white;
-                border-right: 1px solid #E0E0E0;
+                background-color: {theme['SIDEBAR_BG']};
+                border-right: 1px solid {theme['BORDER_COLOR']};
             }}
             QFrame#content_frame {{
-                background-color: {Settings.BACKGROUND_COLOR};
+                background-color: {theme['BG_COLOR']};
             }}
             QStatusBar {{
-                background-color: white;
-                border-top: 1px solid #E0E0E0;
+                background-color: {theme['CARD_BG']};
+                color: {theme['TEXT_COLOR']};
+                border-top: 1px solid {theme['BORDER_COLOR']};
+            }}
+            QMenuBar {{
+                background-color: {theme['CARD_BG']};
+                color: {theme['TEXT_COLOR']};
+            }}
+            QMenuBar::item:selected {{
+                background-color: {theme['NAV_HOVER']};
+            }}
+            QMenu {{
+                background-color: {theme['CARD_BG']};
+                color: {theme['TEXT_COLOR']};
+                border: 1px solid {theme['BORDER_COLOR']};
+            }}
+            QMenu::item:selected {{
+                background-color: {theme['NAV_HOVER']};
             }}
         """)
     
@@ -149,18 +167,21 @@ class MainWindow(QMainWindow):
         
         # Panel de contenido
         self.content_stack = QStackedWidget()
-        self.content_stack.setStyleSheet(f"background-color: {Settings.BACKGROUND_COLOR};")
+        theme = Settings.get_theme()
+        self.content_stack.setStyleSheet(f"background-color: {theme['BG_COLOR']};")
         
-        # Crear vistas
-        self.libros_view = LibrosView(self.db_connection)
-        self.usuarios_view = UsuariosView(self.db_connection)
-        self.prestamos_view = PrestamosView(self.db_connection)
-        self.ejemplares_view = EjemplaresView(self.db_connection)
+        # Crear vistas con información del usuario para control de acceso
+        self.libros_view = LibrosView(self.db_connection, self.current_user)
+        self.usuarios_view = UsuariosView(self.db_connection, self.current_user)
+        self.prestamos_view = PrestamosView(self.db_connection, self.current_user)
+        self.ejemplares_view = EjemplaresView(self.db_connection, self.current_user)
+        self.pasillo_view = PasilloView(self.db_connection, self.current_user)
         
         self.content_stack.addWidget(self.libros_view)
         self.content_stack.addWidget(self.usuarios_view)
         self.content_stack.addWidget(self.prestamos_view)
         self.content_stack.addWidget(self.ejemplares_view)
+        self.content_stack.addWidget(self.pasillo_view)
         
         main_layout.addWidget(self.content_stack, 1)
         
@@ -183,13 +204,14 @@ class MainWindow(QMainWindow):
         nav_layout.setSpacing(5)
         
         # Header con usuario
+        theme = Settings.get_theme()
         user_frame = QFrame()
-        user_frame.setStyleSheet("""
-            QFrame {
-                background-color: #E3F2FD;
+        user_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['USER_FRAME_BG']};
                 border-radius: 8px;
                 padding: 10px;
-            }
+            }}
         """)
         user_layout = QVBoxLayout(user_frame)
         user_layout.setContentsMargins(10, 10, 10, 10)
@@ -202,7 +224,7 @@ class MainWindow(QMainWindow):
         user_name = QLabel(self.current_user.get('name', 'Usuario'))
         user_name.setStyleSheet(f"""
             font-weight: bold;
-            color: {Settings.TEXT_COLOR};
+            color: {theme['TEXT_COLOR']};
             background: transparent;
         """)
         user_name.setAlignment(Qt.AlignCenter)
@@ -223,7 +245,7 @@ class MainWindow(QMainWindow):
         # Título de navegación
         nav_title = QLabel("MENÚ")
         nav_title.setStyleSheet(f"""
-            color: #9E9E9E;
+            color: {theme['TEXT_SECONDARY']};
             font-size: 9pt;
             font-weight: bold;
             letter-spacing: 1px;
@@ -238,8 +260,28 @@ class MainWindow(QMainWindow):
         self.nav_buttons.append(self._create_nav_button(nav_layout, "👥 Usuarios", self._show_users))
         self.nav_buttons.append(self._create_nav_button(nav_layout, "📋 Préstamos", self._show_loans))
         self.nav_buttons.append(self._create_nav_button(nav_layout, "📦 Ejemplares", self._show_copies))
+        self.nav_buttons.append(self._create_nav_button(nav_layout, "🚪 Pasillos", self._show_pasillos))
         
         nav_layout.addStretch()
+        
+        # Botón de cambiar tema
+        self.theme_btn = QPushButton("🌙 Modo Oscuro" if not Settings.DARK_MODE else "☀️ Modo Claro")
+        self.theme_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {theme['TEXT_COLOR']};
+                text-align: left;
+                padding: 12px 15px;
+                border-radius: 4px;
+                font-size: 11pt;
+            }}
+            QPushButton:hover {{
+                background-color: {theme['NAV_HOVER']};
+            }}
+        """)
+        self.theme_btn.setCursor(Qt.PointingHandCursor)
+        self.theme_btn.clicked.connect(self._toggle_theme)
+        nav_layout.addWidget(self.theme_btn)
         
         # Botón de cerrar sesión
         logout_btn = QPushButton("🚪 Cerrar Sesión")
@@ -253,7 +295,7 @@ class MainWindow(QMainWindow):
                 font-size: 11pt;
             }}
             QPushButton:hover {{
-                background-color: #FFEBEE;
+                background-color: {theme['LOGOUT_HOVER']};
             }}
         """)
         logout_btn.setCursor(Qt.PointingHandCursor)
@@ -348,6 +390,12 @@ class MainWindow(QMainWindow):
         self._update_nav_buttons(3)
         self._update_status("Ejemplares de Libros")
     
+    def _show_pasillos(self):
+        """Muestra la vista de pasillos."""
+        self.content_stack.setCurrentWidget(self.pasillo_view)
+        self._update_nav_buttons(4)
+        self._update_status("Gestión de Pasillos")
+    
     def _connect_database(self):
         """Conecta a la base de datos."""
         success, message = self.db_connection.test_connection()
@@ -377,6 +425,14 @@ class MainWindow(QMainWindow):
         if reply == QMessageBox.Yes:
             self.current_user = None
             self._show_login()
+    
+    def _toggle_theme(self):
+        """Alterna entre modo claro y oscuro."""
+        Settings.toggle_theme()
+        # Actualizar texto del botón
+        self.theme_btn.setText("☀️ Modo Claro" if Settings.DARK_MODE else "🌙 Modo Oscuro")
+        # Reconstruir interfaz para aplicar cambios
+        self._setup_main_interface()
     
     def _show_about(self):
         """Muestra información sobre la aplicación."""

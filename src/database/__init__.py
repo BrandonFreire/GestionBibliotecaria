@@ -1,5 +1,7 @@
 """
-Módulo de acceso a base de datos.
+Módulo de base de datos.
 """
 from .connection import DatabaseConnection
-from .queries import QueryManager
+from .distributed_connection import DistributedConnection
+
+__all__ = ['DatabaseConnection', 'DistributedConnection']
